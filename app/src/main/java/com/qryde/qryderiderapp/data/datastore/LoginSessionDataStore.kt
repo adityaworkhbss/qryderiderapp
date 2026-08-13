@@ -12,11 +12,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
-/**
- * Holds the most recent successful 5G response so later steps that need it
- * (device registration via 100U) don't have to be threaded through several
- * screens of navigation args.
- */
 class LoginSessionDataStore @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val json: Json

@@ -15,12 +15,6 @@ private val COLUMN_SEPARATOR = 14.toChar()
 fun resolveDeviceId(context: Context): String =
     Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
 
-/**
- * Shared 100U wire format for both "register this device" (existing account,
- * called right after a successful login) and "create account" (signup, where
- * this call itself creates the account) - same 21 char14-delimited fields
- * either way, only userName/password/userId/email/phone actually vary.
- */
 fun buildDeviceRegistrationData(
     deviceId: String,
     userName: String,

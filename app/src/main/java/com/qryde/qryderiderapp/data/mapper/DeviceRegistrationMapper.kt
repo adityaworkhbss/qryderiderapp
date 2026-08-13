@@ -4,17 +4,6 @@ class DeviceRegistrationFailedException(message: String) : Exception(message)
 
 private val COLUMN_SEPARATOR = 14.toChar()
 
-/**
- * Wire format for 100U: "100U~<result>" where result is one of:
- *  - "NOK" (exact) - generic failure
- *  - "NOK<char14><message>" - failure with a server-provided reason
- *  - "OK^..." ('^'-delimited, only the leading "OK" matters here - the
- *    optional trailing fields are legacy version/affiliation info this app
- *    doesn't use)
- * Anything else is treated as a failure, matching the legacy client's own
- * fallback (it retries registration when the response doesn't match any of
- * the above).
- */
 fun String.requireDeviceRegistered() {
     val payload = substringAfter('~', missingDelimiterValue = this).trim()
 

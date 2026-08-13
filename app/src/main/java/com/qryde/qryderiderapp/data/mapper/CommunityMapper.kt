@@ -7,10 +7,6 @@ import kotlinx.serialization.json.Json
 
 private val EMPTY_RESPONSE_VALUES = setOf("", "null", "nok", "no_data_found")
 
-/**
- * Wire format for 20AUC: "20AUC~<jsonOrEmptyMarker>". An empty/absent result
- * comes back as one of a few plain-text markers rather than JSON.
- */
 fun String.toCommunities(json: Json): List<Community> {
     val payload = substringAfter('~', missingDelimiterValue = this).trim()
     if (payload.lowercase() in EMPTY_RESPONSE_VALUES) return emptyList()

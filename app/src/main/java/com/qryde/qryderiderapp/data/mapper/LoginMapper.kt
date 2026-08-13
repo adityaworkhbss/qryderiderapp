@@ -2,22 +2,8 @@ package com.qryde.qryderiderapp.data.mapper
 
 import com.qryde.qryderiderapp.domain.model.LoginSession
 
-/**
- * Thrown for a request the server actively rejected (bad password, locked
- * account, wrong user type, ...) as opposed to a network/parsing failure -
- * its message is the exact server-provided text, safe to show to the user.
- */
 class LoginFailedException(message: String) : Exception(message)
 
-/**
- * Wire format for 5G: "5G~<status><char14><payload>". On failure, status is
- * anything other than "OK" and payload is a human-readable message straight
- * from the server. On success, payload is a ~60-field char14-delimited
- * positional record; this only extracts the handful of fields this app
- * actually uses - see the index comments below. Everything else (NEMT,
- * Medicaid, PT1 community, Uber/Lyft, RydeLog, ...) is legacy multi-tenant
- * data this app has no feature for yet.
- */
 fun String.toLoginSession(): LoginSession {
     val payload = substringAfter(COMMAND_SEPARATOR, missingDelimiterValue = this)
     val statusAndRest = payload.split(COLUMN_SEPARATOR, limit = 2)
