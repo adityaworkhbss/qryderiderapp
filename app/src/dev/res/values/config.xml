@@ -1,0 +1,8 @@
+<resources>
+    <bool name="isDeveloperMode">true</bool>
+    <bool name="bypassOtp">true</bool>
+    <bool name="isSendAnalytics">false</bool>
+
+    <string name="api_base_url">https://dev.qryde.com/</string>
+    <string name="websocket_url">wss://dev.qryde.com/ws</string>
+</resources>
