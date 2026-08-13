@@ -3,8 +3,9 @@ package com.qryde.qryderiderapp.presentation.auth.login
 data class LoginUiState(
     val userId: String = "",
     val password: String = "",
-    val isPasswordVisible: Boolean = false
+    val isPasswordVisible: Boolean = false,
+    val isSubmitting: Boolean = false
 ) {
     val isLoginEnabled: Boolean
-        get() = userId.isNotBlank() && password.isNotBlank()
+        get() = userId.isNotBlank() && password.isNotBlank() && !isSubmitting
 }

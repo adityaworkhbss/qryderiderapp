@@ -38,7 +38,8 @@ private val SplashBackgroundGradient = Brush.verticalGradient(
 
 @Composable
 fun SplashScreen(
-    onConfigResolved: () -> Unit,
+    onNavigateToAuth: () -> Unit,
+    onNavigateToHome: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -61,7 +62,8 @@ fun SplashScreen(
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collect { event ->
             when (event) {
-                SplashNavigationEvent.ConfigResolved -> onConfigResolved()
+                SplashNavigationEvent.NavigateToAuth -> onNavigateToAuth()
+                SplashNavigationEvent.NavigateToHome -> onNavigateToHome()
             }
         }
     }

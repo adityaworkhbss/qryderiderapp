@@ -2,6 +2,7 @@ package com.qryde.qryderiderapp.presentation.auth.profile
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -32,11 +33,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,30 +52,39 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.qryde.qryderiderapp.core.designsystem.QrydeError
 import com.qryde.qryderiderapp.core.designsystem.QrydePrimary
 import com.qryde.qryderiderapp.presentation.components.QrydePasswordField
-import com.qryde.qryderiderapp.presentation.components.QrydePhoneField
 import com.qryde.qryderiderapp.presentation.components.QrydeTextField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun CreateProfileScreen(
+    phoneNumber: String,
     onBack: () -> Unit,
-    onSubmit: () -> Unit,
+    onAccountCreated: () -> Unit,
     viewModel: CreateProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                CreateProfileEvent.AccountCreated -> onAccountCreated()
+                is CreateProfileEvent.ShowError -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     var avatarBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(uiState.avatarUri) {
@@ -94,6 +106,7 @@ fun CreateProfileScreen(
 
     CreateProfileContent(
         uiState = uiState,
+        phoneNumber = phoneNumber,
         avatarBitmap = avatarBitmap,
         onBack = onBack,
         onAvatarClick = {
@@ -101,27 +114,32 @@ fun CreateProfileScreen(
                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
             )
         },
-        onFullNameChanged = viewModel::onFullNameChanged,
+        onFirstNameChanged = viewModel::onFirstNameChanged,
+        onLastNameChanged = viewModel::onLastNameChanged,
+        onUserIdChanged = viewModel::onUserIdChanged,
+        onUserIdFocusLost = viewModel::onUserIdFocusLost,
         onEmailChanged = viewModel::onEmailChanged,
-        onDialCodeChanged = viewModel::onDialCodeChanged,
-        onPhoneNumberChanged = viewModel::onPhoneNumberChanged,
+        onEmailFocusLost = viewModel::onEmailFocusLost,
         onPasswordChanged = viewModel::onPasswordChanged,
         onPasswordVisibilityToggled = viewModel::onPasswordVisibilityToggled,
         onTermsAcceptedChanged = viewModel::onTermsAcceptedChanged,
-        onSubmit = onSubmit
+        onSubmit = { viewModel.onSubmitClicked(phoneNumber) }
     )
 }
 
 @Composable
 private fun CreateProfileContent(
     uiState: CreateProfileUiState,
+    phoneNumber: String,
     avatarBitmap: ImageBitmap?,
     onBack: () -> Unit,
     onAvatarClick: () -> Unit,
-    onFullNameChanged: (String) -> Unit,
+    onFirstNameChanged: (String) -> Unit,
+    onLastNameChanged: (String) -> Unit,
+    onUserIdChanged: (String) -> Unit,
+    onUserIdFocusLost: () -> Unit,
     onEmailChanged: (String) -> Unit,
-    onDialCodeChanged: (String) -> Unit,
-    onPhoneNumberChanged: (String) -> Unit,
+    onEmailFocusLost: () -> Unit,
     onPasswordChanged: (String) -> Unit,
     onPasswordVisibilityToggled: () -> Unit,
     onTermsAcceptedChanged: (Boolean) -> Unit,
@@ -194,13 +212,56 @@ private fun CreateProfileContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Phone, contentDescription = null, tint = QrydePrimary, modifier = Modifier.size(18.dp))
+            Text(
+                text = "Verified: $phoneNumber",
+                color = QrydePrimary,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 6.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         QrydeTextField(
-            value = uiState.fullName,
-            onValueChange = onFullNameChanged,
-            label = "Full Name",
-            placeholder = "Full Name",
+            value = uiState.firstName,
+            onValueChange = onFirstNameChanged,
+            label = "First Name",
+            placeholder = "First Name",
             leadingIcon = Icons.Filled.Person,
             required = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        QrydeTextField(
+            value = uiState.lastName,
+            onValueChange = onLastNameChanged,
+            label = "Last Name",
+            placeholder = "Last Name",
+            leadingIcon = Icons.Filled.Person,
+            required = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        QrydeTextField(
+            value = uiState.userId,
+            onValueChange = onUserIdChanged,
+            label = "User ID",
+            placeholder = "Choose a User ID",
+            leadingIcon = Icons.Filled.Person,
+            required = true,
+            isError = uiState.userIdStatus == AvailabilityStatus.UNAVAILABLE,
+            supportingText = when (uiState.userIdStatus) {
+                AvailabilityStatus.CHECKING -> "Checking availability…"
+                AvailabilityStatus.AVAILABLE -> "Available"
+                AvailabilityStatus.UNAVAILABLE -> uiState.userIdStatusMessage ?: "Not available"
+                AvailabilityStatus.UNKNOWN -> null
+            },
+            supportingTextColor = if (uiState.userIdStatus == AvailabilityStatus.UNAVAILABLE) QrydeError else QrydePrimary,
+            onFocusLost = onUserIdFocusLost
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -210,20 +271,17 @@ private fun CreateProfileContent(
             onValueChange = onEmailChanged,
             label = "Email",
             placeholder = "name@email.com",
-            leadingIcon = Icons.Filled.Email
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        QrydePhoneField(
-            dialCode = uiState.dialCode,
-            onDialCodeChange = onDialCodeChanged,
-            number = uiState.phoneNumber,
-            onNumberChange = onPhoneNumberChanged,
-            label = "Phone Number",
-            placeholder = "9876543210",
-            numberLeadingIcon = Icons.Filled.Phone,
-            required = true
+            leadingIcon = Icons.Filled.Email,
+            required = true,
+            isError = uiState.emailStatus == AvailabilityStatus.UNAVAILABLE,
+            supportingText = when (uiState.emailStatus) {
+                AvailabilityStatus.CHECKING -> "Checking availability…"
+                AvailabilityStatus.AVAILABLE -> "Available"
+                AvailabilityStatus.UNAVAILABLE -> uiState.emailStatusMessage ?: "Not available"
+                AvailabilityStatus.UNKNOWN -> null
+            },
+            supportingTextColor = if (uiState.emailStatus == AvailabilityStatus.UNAVAILABLE) QrydeError else QrydePrimary,
+            onFocusLost = onEmailFocusLost
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -271,7 +329,15 @@ private fun CreateProfileContent(
             colors = ButtonDefaults.buttonColors(containerColor = QrydePrimary),
             modifier = Modifier.fillMaxWidth().height(52.dp)
         ) {
-            Text("Submit", fontWeight = FontWeight.SemiBold)
+            if (uiState.isSubmitting) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
+                )
+            } else {
+                Text("Submit", fontWeight = FontWeight.SemiBold)
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -283,13 +349,16 @@ private fun CreateProfileContent(
 private fun CreateProfileContentPreview() {
     CreateProfileContent(
         uiState = CreateProfileUiState(),
+        phoneNumber = "9876543210",
         avatarBitmap = null,
         onBack = {},
         onAvatarClick = {},
-        onFullNameChanged = {},
+        onFirstNameChanged = {},
+        onLastNameChanged = {},
+        onUserIdChanged = {},
+        onUserIdFocusLost = {},
         onEmailChanged = {},
-        onDialCodeChanged = {},
-        onPhoneNumberChanged = {},
+        onEmailFocusLost = {},
         onPasswordChanged = {},
         onPasswordVisibilityToggled = {},
         onTermsAcceptedChanged = {},

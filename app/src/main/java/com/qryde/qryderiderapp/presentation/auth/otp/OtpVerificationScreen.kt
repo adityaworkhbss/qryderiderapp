@@ -20,6 +20,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.qryde.qryderiderapp.core.designsystem.QrydeError
 import com.qryde.qryderiderapp.core.designsystem.QrydeLink
 import com.qryde.qryderiderapp.core.designsystem.QrydePrimary
 import com.qryde.qryderiderapp.presentation.components.AuthHeaderIcon
@@ -38,11 +40,20 @@ import com.qryde.qryderiderapp.presentation.components.OtpInputField
 @Composable
 fun OtpVerificationScreen(
     contact: String,
+    expectedCode: String,
     onBack: () -> Unit,
     onVerified: () -> Unit,
     viewModel: OtpVerificationViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                OtpVerificationEvent.Verified -> onVerified()
+            }
+        }
+    }
 
     OtpVerificationContent(
         contact = contact,
@@ -50,7 +61,7 @@ fun OtpVerificationScreen(
         onOtpChanged = viewModel::onOtpChanged,
         onResendClicked = viewModel::onResendClicked,
         onBack = onBack,
-        onVerifyClicked = onVerified
+        onVerifyClicked = { viewModel.onVerifyClicked(expectedCode) }
     )
 }
 
@@ -101,6 +112,11 @@ private fun OtpVerificationContent(
                 length = OtpVerificationUiState.OTP_LENGTH,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            uiState.errorMessage?.let { message ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(text = message, color = QrydeError, textAlign = TextAlign.Center)
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
 

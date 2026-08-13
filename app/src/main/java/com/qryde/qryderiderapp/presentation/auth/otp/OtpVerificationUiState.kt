@@ -2,7 +2,8 @@ package com.qryde.qryderiderapp.presentation.auth.otp
 
 data class OtpVerificationUiState(
     val otp: String = "",
-    val remainingSeconds: Int = RESEND_COOLDOWN_SECONDS
+    val remainingSeconds: Int = RESEND_COOLDOWN_SECONDS,
+    val errorMessage: String? = null
 ) {
     val isVerifyEnabled: Boolean
         get() = otp.length == OTP_LENGTH

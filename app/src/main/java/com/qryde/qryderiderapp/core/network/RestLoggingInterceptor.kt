@@ -1,6 +1,7 @@
 package com.qryde.qryderiderapp.core.network
 
 import com.qryde.qryderiderapp.core.logging.AppLogger
+import okhttp3.FormBody
 import okhttp3.Interceptor
 import okhttp3.Response
 
@@ -9,7 +10,13 @@ class RestLoggingInterceptor : Interceptor {
         val request = chain.request()
         if (!AppLogger.isEnabled) return chain.proceed(request)
 
-        AppLogger.rest("--> ${request.method} ${request.url}")
+        // QtipCommandClient always posts a single "data" form field - read it back
+        // decoded, rather than logging the raw URL-encoded wire bytes.
+        val requestBody = request.body
+        val dataValue = if (requestBody is FormBody && requestBody.size > 0) requestBody.value(0) else null
+        val requestLine = "--> ${request.method} ${request.url}" +
+            (dataValue?.let { "  data :: $it" } ?: "")
+        AppLogger.rest(requestLine)
 
         val startNanos = System.nanoTime()
         val response = try {
@@ -19,9 +26,9 @@ class RestLoggingInterceptor : Interceptor {
             throw e
         }
         val tookMs = (System.nanoTime() - startNanos) / 1_000_000
-        val body = response.peekBody(MAX_LOGGED_BODY_BYTES).string()
+        val responseBody = response.peekBody(MAX_LOGGED_BODY_BYTES).string()
 
-        AppLogger.rest("<-- ${response.code} ${request.method} ${request.url} (${tookMs}ms)\n$body")
+        AppLogger.rest("<-- ${response.code} ${request.method} ${request.url} (${tookMs}ms)\n$responseBody")
 
         return response
     }

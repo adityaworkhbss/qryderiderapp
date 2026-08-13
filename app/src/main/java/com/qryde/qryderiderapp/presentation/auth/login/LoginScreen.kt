@@ -1,5 +1,6 @@
 package com.qryde.qryderiderapp.presentation.auth.login
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,15 +20,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,19 +46,31 @@ import com.qryde.qryderiderapp.presentation.components.QrydeTextField
 
 @Composable
 fun LoginScreen(
-    onLoginClick: () -> Unit,
+    onLoginSuccess: (userId: String, isoCode: String) -> Unit,
+    onPasswordResetRequired: () -> Unit,
     onSignUpClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is LoginEvent.LoginSucceeded -> onLoginSuccess(event.userId, event.isoCode)
+                LoginEvent.PasswordResetRequired -> onPasswordResetRequired()
+                is LoginEvent.ShowError -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     LoginContent(
         uiState = uiState,
         onUserIdChanged = viewModel::onUserIdChanged,
         onPasswordChanged = viewModel::onPasswordChanged,
         onPasswordVisibilityToggled = viewModel::onPasswordVisibilityToggled,
-        onLoginClick = onLoginClick,
+        onLoginClick = viewModel::onLoginClicked,
         onSignUpClick = onSignUpClick,
         onForgotPasswordClick = onForgotPasswordClick
     )
@@ -141,7 +158,15 @@ private fun LoginContent(
             colors = ButtonDefaults.buttonColors(containerColor = QrydePrimary),
             modifier = Modifier.fillMaxWidth().height(52.dp)
         ) {
-            Text("Login", fontWeight = FontWeight.SemiBold)
+            if (uiState.isSubmitting) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
+                )
+            } else {
+                Text("Login", fontWeight = FontWeight.SemiBold)
+            }
         }
 
         Spacer(modifier = Modifier.height(20.dp))

@@ -15,8 +15,13 @@ fun AppNavGraph() {
     ) {
         composable<SplashRoute> {
             SplashScreen(
-                onConfigResolved = {
+                onNavigateToAuth = {
                     navController.navigate(AuthGraphRoute) {
+                        popUpTo<SplashRoute> { inclusive = true }
+                    }
+                },
+                onNavigateToHome = {
+                    navController.navigate(MainGraphRoute) {
                         popUpTo<SplashRoute> { inclusive = true }
                     }
                 }

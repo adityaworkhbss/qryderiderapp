@@ -2,19 +2,36 @@ package com.qryde.qryderiderapp.presentation.auth.profile
 
 import android.net.Uri
 
+enum class AvailabilityStatus {
+    UNKNOWN,
+    CHECKING,
+    AVAILABLE,
+    UNAVAILABLE
+}
+
 data class CreateProfileUiState(
     val avatarUri: Uri? = null,
-    val fullName: String = "",
+    val firstName: String = "",
+    val lastName: String = "",
+    val userId: String = "",
     val email: String = "",
-    val dialCode: String = "+91",
-    val phoneNumber: String = "",
     val password: String = "",
     val isPasswordVisible: Boolean = false,
-    val isTermsAccepted: Boolean = false
+    val isTermsAccepted: Boolean = false,
+    val userIdStatus: AvailabilityStatus = AvailabilityStatus.UNKNOWN,
+    val userIdStatusMessage: String? = null,
+    val emailStatus: AvailabilityStatus = AvailabilityStatus.UNKNOWN,
+    val emailStatusMessage: String? = null,
+    val isSubmitting: Boolean = false
 ) {
     val isSubmitEnabled: Boolean
-        get() = fullName.isNotBlank() &&
-            phoneNumber.isNotBlank() &&
+        get() = firstName.isNotBlank() &&
+            lastName.isNotBlank() &&
+            userId.isNotBlank() &&
+            email.isNotBlank() &&
             password.isNotBlank() &&
-            isTermsAccepted
+            isTermsAccepted &&
+            userIdStatus == AvailabilityStatus.AVAILABLE &&
+            emailStatus == AvailabilityStatus.AVAILABLE &&
+            !isSubmitting
 }

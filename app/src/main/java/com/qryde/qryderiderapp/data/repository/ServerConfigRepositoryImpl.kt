@@ -13,13 +13,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 
-/**
- * Same discovery protocol as the old GetServerPORT AsyncTask: send a code that
- * tells the config server which environment we're in, get back a set of
- * QTIP/QREST/QMAP/etc endpoints (see ServerConfigMapper), persist them. Bounded
- * retries replace the old "retry forever in the background" behavior with
- * something the UI can eventually give up on and show a Retry button for.
- */
 class ServerConfigRepositoryImpl @Inject constructor(
     private val socketClient: ServerConfigSocketClient,
     private val serverConfigDataStore: ServerConfigDataStore,

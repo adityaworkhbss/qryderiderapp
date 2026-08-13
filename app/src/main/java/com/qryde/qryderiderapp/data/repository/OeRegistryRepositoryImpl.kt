@@ -2,6 +2,7 @@ package com.qryde.qryderiderapp.data.repository
 
 import com.qryde.qryderiderapp.core.common.AppResult
 import com.qryde.qryderiderapp.core.logging.AppLogger
+import com.qryde.qryderiderapp.data.datastore.OeRegistryDataStore
 import com.qryde.qryderiderapp.data.mapper.toOeRegistryValues
 import com.qryde.qryderiderapp.data.remote.rest.QtipCommandClient
 import com.qryde.qryderiderapp.domain.model.OeRegistryValues
@@ -11,11 +12,17 @@ import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 class OeRegistryRepositoryImpl @Inject constructor(
-    private val qtipCommandClient: QtipCommandClient
+    private val qtipCommandClient: QtipCommandClient,
+    private val oeRegistryDataStore: OeRegistryDataStore
 ) : OeRegistryRepository {
 
     override suspend fun fetchOeRegistryValues(serverConfig: ServerConfig): AppResult<OeRegistryValues> {
-        val qtipRestBase = serverConfig.urlFor(QTIP_REST_ENDPOINT_KEY)
+        val qtipRestBase = serverConfig.urlFor(QTIP_REST_ENDPOINT_KEY) // Hardcoded key for QTIP REST endpoint in server config
+
+        // make sure we have a valid QTIP REST endpoint before proceeding
+
+
+
         if (qtipRestBase.isNullOrBlank()) {
             AppLogger.w(TAG, "Resolved server config has no $QTIP_REST_ENDPOINT_KEY entry, skipping OE registry fetch")
             return AppResult.Error("QTIP REST endpoint is not available")
@@ -29,6 +36,7 @@ class OeRegistryRepositoryImpl @Inject constructor(
                 data = OE_REGISTRY_MESSAGE
             )
             val values = rawResponse.toOeRegistryValues()
+            oeRegistryDataStore.save(values)
             AppLogger.i(TAG, "OE registry resolved ${values.values.size} entries")
             AppResult.Success(values)
         } catch (e: CancellationException) {

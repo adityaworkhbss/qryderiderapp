@@ -14,7 +14,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.qryde.qryderiderapp"
+        applicationId = "com.QRyde.Marketplace"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -32,7 +32,7 @@ android {
         }
         create("staging") {
             dimension = "environment"
-            applicationIdSuffix = ".stg"
+//            applicationIdSuffix = ".stg"
             versionNameSuffix = "-staging"
         }
         create("prod") {

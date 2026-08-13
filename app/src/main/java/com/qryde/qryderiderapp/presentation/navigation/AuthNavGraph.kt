@@ -5,6 +5,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.navigation
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.qryde.qryderiderapp.presentation.auth.forgotpassword.ForgotPasswordScreen
 import com.qryde.qryderiderapp.presentation.auth.login.LoginScreen
 import com.qryde.qryderiderapp.presentation.auth.otp.OtpVerificationScreen
 import com.qryde.qryderiderapp.presentation.auth.profile.CreateProfileScreen
@@ -18,23 +19,19 @@ fun NavGraphBuilder.authNavGraph(
     navigation<AuthGraphRoute>(startDestination = LoginRoute) {
         composable<LoginRoute> {
             LoginScreen(
-                onLoginClick = {
-                    navController.navigate(PhoneVerificationRoute(AuthFlow.LOGIN))
+                onLoginSuccess = { userId, isoCode ->
+                    navController.navigate(
+                        PhoneVerificationRoute(isSignUp = false, userId = userId, isoCode = isoCode)
+                    )
+                },
+                onPasswordResetRequired = {
+                    navController.navigate(SetNewPasswordRoute)
                 },
                 onSignUpClick = {
-                    navController.navigate(CreateProfileRoute)
+                    navController.navigate(PhoneVerificationRoute(isSignUp = true))
                 },
                 onForgotPasswordClick = {
-                    navController.navigate(PhoneVerificationRoute(AuthFlow.FORGOT_PASSWORD))
-                }
-            )
-        }
-
-        composable<CreateProfileRoute> {
-            CreateProfileScreen(
-                onBack = { navController.popBackStack() },
-                onSubmit = {
-                    navController.navigate(PhoneVerificationRoute(AuthFlow.SIGN_UP))
+                    navController.navigate(ForgotPasswordRoute)
                 }
             )
         }
@@ -42,9 +39,11 @@ fun NavGraphBuilder.authNavGraph(
         composable<PhoneVerificationRoute> { backStackEntry ->
             val route: PhoneVerificationRoute = backStackEntry.toRoute()
             PhoneVerificationScreen(
+                userId = route.userId,
+                isoCode = route.isoCode,
                 onBackToLogin = { navController.popBackStack<LoginRoute>(inclusive = false) },
-                onSendOtp = { contact ->
-                    navController.navigate(OtpVerificationRoute(route.flow, contact))
+                onCodeSent = { contact, expectedCode ->
+                    navController.navigate(OtpVerificationRoute(route.isSignUp, contact, expectedCode))
                 }
             )
         }
@@ -53,13 +52,30 @@ fun NavGraphBuilder.authNavGraph(
             val route: OtpVerificationRoute = backStackEntry.toRoute()
             OtpVerificationScreen(
                 contact = route.contact,
+                expectedCode = route.expectedCode,
                 onBack = { navController.popBackStack() },
                 onVerified = {
-                    when (route.flow) {
-                        AuthFlow.FORGOT_PASSWORD -> navController.navigate(SetNewPasswordRoute)
-                        AuthFlow.SIGN_UP, AuthFlow.LOGIN -> onAuthComplete()
+                    if (route.isSignUp) {
+                        navController.navigate(CreateProfileRoute(phoneNumber = route.contact))
+                    } else {
+                        onAuthComplete()
                     }
                 }
+            )
+        }
+
+        composable<CreateProfileRoute> { backStackEntry ->
+            val route: CreateProfileRoute = backStackEntry.toRoute()
+            CreateProfileScreen(
+                phoneNumber = route.phoneNumber,
+                onBack = { navController.popBackStack() },
+                onAccountCreated = onAuthComplete
+            )
+        }
+
+        composable<ForgotPasswordRoute> {
+            ForgotPasswordScreen(
+                onBackToLogin = { navController.popBackStack<LoginRoute>(inclusive = false) }
             )
         }
 

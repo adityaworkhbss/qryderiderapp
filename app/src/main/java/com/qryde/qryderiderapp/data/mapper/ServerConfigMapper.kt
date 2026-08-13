@@ -2,14 +2,20 @@ package com.qryde.qryderiderapp.data.mapper
 
 import com.qryde.qryderiderapp.domain.model.ServerConfig
 
-/**
- * Wire format: semicolon-separated "KEY~VALUE" fields, e.g.
- *   QTIP2_TestServer_BASEURL~https://stgq.qryde.net;QREST2_TestServer_IPPORT~reststg.qryde.net,443;...
- * VALUE is either already a full URL (has a scheme) or a bare "host,port" pair
- * that needs a scheme and the comma swapped for a colon. Keys are not at fixed
- * positions and the set of keys can vary (different regions, optional services),
- * so every entry is parsed by its own key rather than by index.
- */
+
+/*
+*
+* QTIP2_TestServer_BASEURL~https://stgq.qryde.net;
+* QREST2_TestServer_IPPORT~reststg.qryde.net,443;
+* QMAP2_TestServer_IPPORT~reststg.qryde.net,443;
+* MNJS_TestServer_BASEURL_SIO~mnjs.qryde.net,80;
+* QTIP3_TestServer_BASEURL~https://arn.qryde.net/arn/;
+* QREST3_TestServer_IPPORT~arn.qryde.net,443;
+* QMAP3_TestServer_IPPORT~arn.qryde.net,443;
+*
+*
+* */
+
 fun String.toServerConfig(): ServerConfig {
     val endpoints = split(";")
         .mapNotNull { entry ->

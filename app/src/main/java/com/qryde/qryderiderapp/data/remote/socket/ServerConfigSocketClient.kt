@@ -11,12 +11,6 @@ import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-/**
- * Opens the config-discovery socket, sends a single message, and returns the
- * first text reply as a plain suspend call - modeled on the old
- * GetServerPORT AsyncTask, but using OkHttp's built-in WebSocket support
- * instead of a separate ws client library, and coroutines instead of callbacks.
- */
 class ServerConfigSocketClient @Inject constructor(
     private val okHttpClient: OkHttpClient
 ) {

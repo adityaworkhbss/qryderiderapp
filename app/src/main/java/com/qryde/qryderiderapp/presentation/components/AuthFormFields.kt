@@ -36,6 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -90,13 +92,17 @@ fun QrydeTextField(
     required: Boolean = false,
     leadingIcon: ImageVector? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
-    isError: Boolean = false
+    isError: Boolean = false,
+    supportingText: String? = null,
+    supportingTextColor: Color = QrydeHint,
+    onFocusLost: (() -> Unit)? = null
 ) {
     Column(modifier = modifier) {
         if (label.isNotEmpty()) {
             FieldLabel(label, required)
             Spacer(modifier = Modifier.height(6.dp))
         }
+        var wasFocused by remember { mutableStateOf(false) }
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -107,8 +113,17 @@ fun QrydeTextField(
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             shape = FieldShape,
             colors = fieldColors,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .onFocusChanged { state ->
+                    if (wasFocused && !state.isFocused) onFocusLost?.invoke()
+                    wasFocused = state.isFocused
+                }
         )
+        if (supportingText != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = supportingText, color = supportingTextColor, style = MaterialTheme.typography.labelLarge)
+        }
     }
 }
 
