@@ -1,34 +1,46 @@
 package com.qryde.qryderiderapp.presentation.splash
 
 import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.qryde.qryderiderapp.R
 import com.qryde.qryderiderapp.core.permissions.RuntimePermissions
+
+private val SplashBackgroundGradient = Brush.verticalGradient(
+    colors = listOf(
+        Color(0xFF2C771A),
+        Color(0xFF256718),
+        Color(0xFF1C5314),
+        Color(0xFF164712),
+        Color(0xFF103A0F)
+    )
+)
 
 @Composable
 fun SplashScreen(
     onConfigResolved: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -54,31 +66,35 @@ fun SplashScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.errorEvent.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    SplashContent(appName = viewModel.appName)
+}
+
+@Composable
+private fun SplashContent(appName: String) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(SplashBackgroundGradient)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = uiState.appName, style = MaterialTheme.typography.titleLarge)
-
-        if (uiState.isLoading) {
-            CircularProgressIndicator(modifier = Modifier.padding(top = 24.dp))
-        }
-
-        uiState.error?.let { error ->
-            Text(
-                text = error,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 24.dp)
-            )
-            Button(
-                onClick = viewModel::onRetryClicked,
-                modifier = Modifier.padding(top = 16.dp)
-            ) {
-                Text("Retry")
-            }
-        }
+        Image(
+            painter = painterResource(R.drawable.qryde_logo),
+            contentDescription = appName,
+            modifier = Modifier.fillMaxWidth(0.7f)
+        )
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SplashContentPreview() {
+    SplashContent(appName = "QRyde")
 }
