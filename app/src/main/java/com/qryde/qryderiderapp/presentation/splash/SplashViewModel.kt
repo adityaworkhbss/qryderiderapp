@@ -3,7 +3,9 @@ package com.qryde.qryderiderapp.presentation.splash
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qryde.qryderiderapp.core.common.AppResult
+import com.qryde.qryderiderapp.core.logging.AppLogger
 import com.qryde.qryderiderapp.core.utils.AppConfig
+import com.qryde.qryderiderapp.domain.usecase.FetchOeRegistryValuesUseCase
 import com.qryde.qryderiderapp.domain.usecase.ResolveServerConfigUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -17,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     appConfig: AppConfig,
-    private val resolveServerConfigUseCase: ResolveServerConfigUseCase
+    private val resolveServerConfigUseCase: ResolveServerConfigUseCase,
+    private val fetchOeRegistryValuesUseCase: FetchOeRegistryValuesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SplashUiState(appName = appConfig.appName))
@@ -26,12 +29,8 @@ class SplashViewModel @Inject constructor(
     private val _navigationEvent = MutableSharedFlow<SplashNavigationEvent>()
     val navigationEvent: SharedFlow<SplashNavigationEvent> = _navigationEvent
 
-    // The permission request is a one-time gate the UI runs before the config
-    // call; guarded here too so a recomposition (e.g. rotation while the
-    // permission dialog is up) can't fire a second resolveConfig() call.
     private var configResolutionStarted = false
 
-    /** Called by the UI once the permission flow (granted, denied, or already held) is done. */
     fun onPermissionsResolved() {
         if (configResolutionStarted) return
         configResolutionStarted = true
@@ -48,9 +47,11 @@ class SplashViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             when (val result = resolveServerConfigUseCase()) {
                 is AppResult.Success -> {
+                    when (val oeRegistryResult = fetchOeRegistryValuesUseCase(result.data)) {
+                        is AppResult.Success -> Unit
+                        is AppResult.Error -> AppLogger.w(TAG, oeRegistryResult.message)
+                    }
                     _uiState.value = _uiState.value.copy(isLoading = false)
-                    // Next step (once specified): hit the follow-up REST call here
-                    // before emitting ConfigResolved, using result.data's resolved URLs.
                     _navigationEvent.emit(SplashNavigationEvent.ConfigResolved)
                 }
                 is AppResult.Error -> {
@@ -58,5 +59,9 @@ class SplashViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "Splash"
     }
 }

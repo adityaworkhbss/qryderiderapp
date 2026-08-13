@@ -12,7 +12,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
-/** The endpoint set is dynamic (see ServerConfigMapper), so it's persisted as one JSON blob. */
 class ServerConfigDataStore @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val json: Json

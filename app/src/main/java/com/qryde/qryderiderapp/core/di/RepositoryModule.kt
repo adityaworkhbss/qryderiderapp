@@ -1,6 +1,8 @@
 package com.qryde.qryderiderapp.core.di
 
+import com.qryde.qryderiderapp.data.repository.OeRegistryRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.ServerConfigRepositoryImpl
+import com.qryde.qryderiderapp.domain.repository.OeRegistryRepository
 import com.qryde.qryderiderapp.domain.repository.ServerConfigRepository
 import dagger.Binds
 import dagger.Module
@@ -13,4 +15,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindServerConfigRepository(impl: ServerConfigRepositoryImpl): ServerConfigRepository
+
+    @Binds
+    abstract fun bindOeRegistryRepository(impl: OeRegistryRepositoryImpl): OeRegistryRepository
 }
