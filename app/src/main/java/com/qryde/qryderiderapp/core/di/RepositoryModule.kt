@@ -1,7 +1,7 @@
 package com.qryde.qryderiderapp.core.di
 
-import com.qryde.qryderiderapp.data.repository.AuthRepositoryImpl
-import com.qryde.qryderiderapp.domain.repository.AuthRepository
+import com.qryde.qryderiderapp.data.repository.ServerConfigRepositoryImpl
+import com.qryde.qryderiderapp.domain.repository.ServerConfigRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -12,5 +12,5 @@ import dagger.hilt.components.SingletonComponent
 abstract class RepositoryModule {
 
     @Binds
-    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
+    abstract fun bindServerConfigRepository(impl: ServerConfigRepositoryImpl): ServerConfigRepository
 }

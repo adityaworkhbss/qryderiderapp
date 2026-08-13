@@ -5,4 +5,5 @@
 
     <string name="api_base_url">https://staging.qryde.com/</string>
     <string name="websocket_url">wss://staging.qryde.com/ws</string>
+    <string name="base_wsuri">ws://cfg.qryde.com:18575</string>
 </resources>

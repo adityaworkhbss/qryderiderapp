@@ -15,6 +15,7 @@ data class AppConfig(
     val environment: Environment,
     val apiBaseUrl: String,
     val webSocketUrl: String,
+    val discoveryWebSocketUrl: String,
     val appName: String,
     val isDeveloperMode: Boolean,
     val bypassOtp: Boolean,

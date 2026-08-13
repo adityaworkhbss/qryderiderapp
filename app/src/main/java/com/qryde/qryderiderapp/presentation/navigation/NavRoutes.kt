@@ -2,16 +2,13 @@ package com.qryde.qryderiderapp.presentation.navigation
 
 import kotlinx.serialization.Serializable
 
-// Nested-graph markers - never carry business data, only mark where a graph starts.
+// Top-level destination, not part of any nested graph.
 @Serializable
-data object AuthGraphRoute
+data object SplashRoute
 
+// Nested-graph marker - never carries business data, only marks where the graph starts.
 @Serializable
 data object MainGraphRoute
-
-// Auth graph destinations
-@Serializable
-data object LoginRoute
 
 // Main graph destinations
 @Serializable

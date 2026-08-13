@@ -31,6 +31,7 @@ object AppConfigModule {
             environment = environment,
             apiBaseUrl = resources.getString(R.string.api_base_url),
             webSocketUrl = resources.getString(R.string.websocket_url),
+            discoveryWebSocketUrl = resources.getString(R.string.base_wsuri),
             appName = resources.getString(R.string.app_name),
             isDeveloperMode = resources.getBoolean(R.bool.isDeveloperMode),
             bypassOtp = resources.getBoolean(R.bool.bypassOtp),

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- The config-discovery socket (base_wsuri) is plain ws:// by design - everything
+         else the app talks to (api_base_url, websocket_url) stays https/wss by default. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">cfg.qryde.com</domain>
+    </domain-config>
+</network-security-config>

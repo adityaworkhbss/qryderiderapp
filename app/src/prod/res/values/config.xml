@@ -5,4 +5,5 @@
 
     <string name="api_base_url">https://api.qryde.com/</string>
     <string name="websocket_url">wss://api.qryde.com/ws</string>
+    <string name="base_wsuri">ws://cfg.qryde.com:18575</string>
 </resources>

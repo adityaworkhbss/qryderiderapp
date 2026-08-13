@@ -9,13 +9,7 @@ import com.qryde.qryderiderapp.presentation.home.HomeScreen
 fun NavGraphBuilder.mainNavGraph(navController: NavController) {
     navigation<MainGraphRoute>(startDestination = HomeRoute) {
         composable<HomeRoute> {
-            HomeScreen(
-                onLoggedOut = {
-                    navController.navigate(AuthGraphRoute) {
-                        popUpTo<MainGraphRoute> { inclusive = true }
-                    }
-                }
-            )
+            HomeScreen()
         }
     }
 }

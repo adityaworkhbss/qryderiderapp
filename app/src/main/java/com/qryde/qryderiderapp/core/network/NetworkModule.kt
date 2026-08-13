@@ -1,7 +1,6 @@
 package com.qryde.qryderiderapp.core.network
 
 import com.qryde.qryderiderapp.core.utils.AppConfig
-import com.qryde.qryderiderapp.data.remote.api.AuthApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -9,9 +8,8 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.Retrofit
-import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import javax.inject.Singleton
 
 @Module
@@ -24,13 +22,9 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(appConfig: AppConfig): OkHttpClient =
+    fun provideOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
-            .apply {
-                if (appConfig.isDeveloperMode) {
-                    addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
-                }
-            }
+            .addInterceptor(RestLoggingInterceptor())
             .build()
 
     @Provides
@@ -41,8 +35,4 @@ object NetworkModule {
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-
-    @Provides
-    @Singleton
-    fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
 }
