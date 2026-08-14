@@ -19,20 +19,9 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 
-/**
- * Default map center: Sector 49, Gurugram - matches the mock pickup location
- * used across the booking flow's sample data.
- */
 const val DefaultMapLatitude = 28.4595
 const val DefaultMapLongitude = 77.0266
 
-/**
- * Plain OSM tile surface - no marker rendering here. Callers that want a
- * pin drawn on top (e.g. a fixed "current location" indicator) should
- * layer [CurrentLocationPinOverlay] over this in a Box, since Compose text
- * and images render more crisply than anything baked into a map overlay
- * bitmap.
- */
 @Composable
 fun OsmMapView(
     modifier: Modifier = Modifier,

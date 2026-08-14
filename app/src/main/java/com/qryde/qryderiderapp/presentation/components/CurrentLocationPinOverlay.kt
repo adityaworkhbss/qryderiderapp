@@ -19,12 +19,6 @@ import androidx.compose.ui.unit.dp
 import com.qryde.qryderiderapp.R
 import com.qryde.qryderiderapp.core.designsystem.QrydePrimary
 
-/**
- * Fixed pin + label meant to sit centered over an [OsmMapView] - the map
- * pans underneath it, so whatever is under the pin's tip at the center is
- * the picked point. Just the pin image plus a real Text pill, nothing
- * baked into a bitmap.
- */
 @Composable
 fun CurrentLocationPinOverlay(
     modifier: Modifier = Modifier,
@@ -36,17 +30,17 @@ fun CurrentLocationPinOverlay(
             contentDescription = "Pinned location",
             modifier = Modifier.height(40.dp)
         )
-        if (label != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = label,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(QrydePrimary)
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
-            )
-        }
+//        if (label != null) {
+//            Spacer(modifier = Modifier.height(8.dp))
+//            Text(
+//                text = label,
+//                color = Color.White,
+//                fontWeight = FontWeight.Bold,
+//                modifier = Modifier
+//                    .clip(RoundedCornerShape(20.dp))
+//                    .background(QrydePrimary)
+//                    .padding(horizontal = 20.dp, vertical = 12.dp)
+//            )
+//        }
     }
 }

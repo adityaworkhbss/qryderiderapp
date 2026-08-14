@@ -124,11 +124,7 @@ class CreateProfileViewModel @Inject constructor(
             )
             when (val result = createAccountUseCase(details)) {
                 is AppResult.Success -> {
-                    // Auto-login with the freshly created credentials, matching the
-                    // legacy client's own post-registration behavior. Best-effort: a
-                    // signup that succeeded shouldn't get stuck here if this secondary
-                    // call flakes - the user just lands back at Login next time instead
-                    // of staying signed in.
+
                     when (val loginResult = loginUseCase(state.userId, state.password)) {
                         is AppResult.Success -> {
                             when (val communitiesResult = fetchJoinedCommunitiesUseCase(loginResult.data.userId)) {

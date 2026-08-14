@@ -255,7 +255,7 @@ private fun DropdownField(
     var expanded by remember { mutableStateOf(false) }
 
     Column {
-        Text(label + " *", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+        Text("$label *", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
         Spacer(modifier = Modifier.height(6.dp))
         Box {
             Row(

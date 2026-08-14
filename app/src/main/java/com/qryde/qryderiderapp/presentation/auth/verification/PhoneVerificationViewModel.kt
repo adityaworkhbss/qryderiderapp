@@ -35,11 +35,6 @@ class PhoneVerificationViewModel @Inject constructor(
         _uiState.update { it.copy(contact = value) }
     }
 
-    /**
-     * userId is blank pre-signup (no account exists yet) and real for the
-     * LOGIN flow (from the 5G response) - the server accepts a blank/rc_null
-     * userId either way, confirmed against real sign-up traffic.
-     */
     fun onSendOtpClicked(userId: String, isoCode: String) {
         val state = _uiState.value
         if (!state.isSendEnabled) return

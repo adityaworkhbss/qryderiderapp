@@ -50,14 +50,6 @@ class OtpVerificationViewModel @Inject constructor(
         // the initial PhoneVerification screen send is implemented).
     }
 
-    /**
-     * The OTP is generated client-side and never round-tripped to the server for
-     * verification (see PhoneVerificationViewModel) - a blank expectedCode means
-     * this flow isn't wired to a real send yet, so any complete entry is accepted.
-     * Once locally verified, registers this device via 100U - best-effort, same as
-     * OE registry/joined communities: a failure (or no session to register yet, for
-     * flows other than LOGIN) is logged but never blocks moving on.
-     */
     fun onVerifyClicked(expectedCode: String) {
         val state = _uiState.value
         if (!state.isVerifyEnabled) return
