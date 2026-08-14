@@ -18,6 +18,23 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
+
+/*
+*
+* Email check command: 5E
+* req : devtest@ry.com......EN
+* res : 5E~OK
+*
+* User ID check command: 100ID
+* req : nt5555...EN
+* res : 100ID~OK
+*
+* Create account command: 100U
+* req : fbf0b5fb82d4d209ex7xBYA9TvO6LvZRlka1Oq:APA91bE0VVrThqGxFn1Kk1gZMXgh2EV4RsI5YmsaidR-MZzWRpvNeWmfzgaEXGMmPGEtdDA5CMZKcfAO0k2psSzO8MuWmNukQJUYrcS00y_jIXPkoiOXveYAndroidUS.9793706222Dev|Test0......Hbss2004nt5555devtest@ry.com..................QRydecom.QRyde.MarketplaceEN
+* res : 100U~OK^qryde2^v28^1555307^QRyde
+*
+* */
+
 class RegistrationRepositoryImpl @Inject constructor(
     private val qtipCommandClient: QtipCommandClient,
     private val serverConfigDataStore: ServerConfigDataStore,

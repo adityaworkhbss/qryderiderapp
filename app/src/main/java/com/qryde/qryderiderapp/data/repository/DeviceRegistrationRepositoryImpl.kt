@@ -17,6 +17,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
+/*
+*
+* req : fbf0b5fb82d4d209...AndroidUS.8307544913Northend Test0......Hbss@2004nt5656tolop99333@dwarkm.com..................QRydecom.QRyde.MarketplaceEN
+* res : 100U~OK^qryde2^v28^1516704^QRyde
+*
+* */
+
 class DeviceRegistrationRepositoryImpl @Inject constructor(
     private val qtipCommandClient: QtipCommandClient,
     private val serverConfigDataStore: ServerConfigDataStore,

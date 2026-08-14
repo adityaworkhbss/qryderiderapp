@@ -12,6 +12,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
+
+/*
+*
+* res : nt56561tolop99333@dwarkm.comhttps://stgq.qryde.net/MOBILEcom.QRyde.MarketplaceEN
+* req : 5FP2~OKWe've sent a temporary password to your mobile number. Please use it to log in a update your password.
+*
+* */
+
 class ForgotPasswordRepositoryImpl @Inject constructor(
     private val qtipCommandClient: QtipCommandClient,
     private val serverConfigDataStore: ServerConfigDataStore

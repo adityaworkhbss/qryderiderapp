@@ -13,6 +13,18 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 
+/*
+*
+* QTIP2_TestServer_BASEURL~https://stgq.qryde.net;
+* QREST2_TestServer_IPPORT~reststg.qryde.net,443;
+* QMAP2_TestServer_IPPORT~reststg.qryde.net,443;
+* MNJS_TestServer_BASEURL_SIO~mnjs.qryde.net,80;
+* QTIP3_TestServer_BASEURL~https://arn.qryde.net/arn/;
+* QREST3_TestServer_IPPORT~arn.qryde.net,443;
+* QMAP3_TestServer_IPPORT~arn.qryde.net,443;
+*
+* */
+
 class ServerConfigRepositoryImpl @Inject constructor(
     private val socketClient: ServerConfigSocketClient,
     private val serverConfigDataStore: ServerConfigDataStore,
