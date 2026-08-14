@@ -1,6 +1,8 @@
 package com.qryde.qryderiderapp.presentation.home
 
 import androidx.lifecycle.ViewModel
+import com.qryde.qryderiderapp.presentation.components.DefaultMapLatitude
+import com.qryde.qryderiderapp.presentation.components.DefaultMapLongitude
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +36,10 @@ data class BookRideUiState(
     val payWithCard: Boolean = false,
     val showDatePickerFor: DatePickerTarget? = null,
     val showTimePicker: Boolean = false,
-    val showPaymentMethodSheet: Boolean = false
+    val showPaymentMethodSheet: Boolean = false,
+    val showSetLocationSheet: Boolean = false,
+    val mapPickerLatitude: Double = DefaultMapLatitude,
+    val mapPickerLongitude: Double = DefaultMapLongitude
 ) {
     val canProceedFromRideDetails: Boolean
         get() = if (isRecurring) {
@@ -144,6 +149,34 @@ class BookRideViewModel @Inject constructor() : ViewModel() {
 
     fun onPaymentMethodSelected(payWithCard: Boolean) {
         _uiState.update { it.copy(payWithCard = payWithCard, showPaymentMethodSheet = false) }
+    }
+
+    fun onSetLocationOnMapRequested() {
+        _uiState.update {
+            it.copy(
+                showSetLocationSheet = true,
+                mapPickerLatitude = DefaultMapLatitude,
+                mapPickerLongitude = DefaultMapLongitude
+            )
+        }
+    }
+
+    fun onMapPickerCenterChanged(latitude: Double, longitude: Double) {
+        _uiState.update { it.copy(mapPickerLatitude = latitude, mapPickerLongitude = longitude) }
+    }
+
+    fun onSetLocationSheetDismissed() {
+        _uiState.update { it.copy(showSetLocationSheet = false) }
+    }
+
+    fun onLocationOnMapSaved() {
+        _uiState.update {
+            it.copy(
+                dropoffAddress = "Pinned location (${"%.4f".format(it.mapPickerLatitude)}, ${"%.4f".format(it.mapPickerLongitude)})",
+                step = BookingStep.RIDE_DETAILS,
+                showSetLocationSheet = false
+            )
+        }
     }
 
     fun onBackToSearch() {

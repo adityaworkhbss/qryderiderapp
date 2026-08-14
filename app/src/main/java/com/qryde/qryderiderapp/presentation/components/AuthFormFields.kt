@@ -95,7 +95,8 @@ fun QrydeTextField(
     isError: Boolean = false,
     supportingText: String? = null,
     supportingTextColor: Color = QrydeHint,
-    onFocusLost: (() -> Unit)? = null
+    onFocusLost: (() -> Unit)? = null,
+    onFocusChanged: ((Boolean) -> Unit)? = null
 ) {
     Column(modifier = modifier) {
         if (label.isNotEmpty()) {
@@ -118,6 +119,7 @@ fun QrydeTextField(
                 .onFocusChanged { state ->
                     if (wasFocused && !state.isFocused) onFocusLost?.invoke()
                     wasFocused = state.isFocused
+                    onFocusChanged?.invoke(state.isFocused)
                 }
         )
         if (supportingText != null) {
