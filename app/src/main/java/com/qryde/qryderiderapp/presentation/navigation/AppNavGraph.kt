@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.qryde.qryderiderapp.presentation.main.MainScaffold
 import com.qryde.qryderiderapp.presentation.splash.SplashScreen
 
 @Composable
@@ -32,6 +33,8 @@ fun AppNavGraph() {
                 popUpTo<AuthGraphRoute> { inclusive = true }
             }
         }
-        mainNavGraph(navController)
+        composable<MainGraphRoute> {
+            MainScaffold()
+        }
     }
 }
