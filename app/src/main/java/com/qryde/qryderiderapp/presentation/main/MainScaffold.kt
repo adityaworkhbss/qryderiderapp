@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -47,6 +48,8 @@ private val bottomNavTabs = listOf(
 
 @Composable
 fun MainScaffold() {
+    hiltViewModel<BraintreeViewModel>()
+
     val navController = rememberNavController()
 
     Scaffold(

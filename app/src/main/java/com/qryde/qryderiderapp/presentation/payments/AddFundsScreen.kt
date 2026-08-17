@@ -1,5 +1,6 @@
 package com.qryde.qryderiderapp.presentation.payments
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,10 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.qryde.qryderiderapp.core.designsystem.QrydeFieldBackground
 import com.qryde.qryderiderapp.core.designsystem.QrydePrimary
 
@@ -56,11 +60,24 @@ private val FundsPaymentMethods = listOf(
 @Composable
 fun AddFundsScreen(
     onBack: () -> Unit,
-    onFundsAdded: (amount: String, method: String) -> Unit
+    onFundsAdded: (amount: String, method: String) -> Unit,
+    viewModel: AddFundsViewModel = hiltViewModel()
 ) {
     var selectedQuickAmount by remember { mutableStateOf<String?>(null) }
     var customAmount by remember { mutableStateOf("") }
     var selectedMethod by remember { mutableStateOf(FundsPaymentMethods.first().label) }
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is AddFundsEvent.PaymentMethodAdded ->
+                    Toast.makeText(context, "Payment method added.", Toast.LENGTH_SHORT).show()
+                is AddFundsEvent.DropInError ->
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -114,13 +131,17 @@ fun AddFundsScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         FundsPaymentMethods.forEach { method ->
+            val isAddCard = method.label == FundsPaymentMethods.first().label
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color.White)
-                    .clickable { selectedMethod = method.label }
+                    .clickable {
+                        selectedMethod = method.label
+                        if (isAddCard) viewModel.onAddCardClicked()
+                    }
                     .padding(horizontal = 12.dp, vertical = 4.dp)
             ) {
                 Box(
@@ -135,7 +156,10 @@ fun AddFundsScreen(
                 Text(method.label, modifier = Modifier.weight(1f).padding(start = 12.dp))
                 RadioButton(
                     selected = method.label == selectedMethod,
-                    onClick = { selectedMethod = method.label },
+                    onClick = {
+                        selectedMethod = method.label
+                        if (isAddCard) viewModel.onAddCardClicked()
+                    },
                     colors = RadioButtonDefaults.colors(selectedColor = QrydePrimary)
                 )
             }

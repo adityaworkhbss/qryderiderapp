@@ -27,12 +27,6 @@ data class ServiceOption(
     val hasInfo: Boolean = false
 )
 
-val SampleRecentAddresses = listOf(
-    RecentAddress("1", "123, Maple Street", "Sector 15, Noida, Uttar Pradesh, 201301, India"),
-    RecentAddress("2", "456, Rose Avenue, Block B,", "Sector 18, Haryana, Gurgaon 122018"),
-    RecentAddress("3", "789, Tulip Street, Unit 12,", "Block C, Sector 20, Gurugram, Haryana")
-)
-
 val SampleServiceOptions = listOf(
     ServiceOption("fixed_bus_route", "Fixed Bus Route", durationMinutes = 50, distanceMiles = 9.8, fare = 60, hasInfo = true),
     ServiceOption("paratransit", "Paratransit", durationMinutes = 20, distanceMiles = 9.8, fare = 60),

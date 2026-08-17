@@ -1,6 +1,11 @@
 package com.qryde.qryderiderapp.presentation.home
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.qryde.qryderiderapp.core.common.AppResult
+import com.qryde.qryderiderapp.core.logging.AppLogger
+import com.qryde.qryderiderapp.domain.model.SavedTripAddress
+import com.qryde.qryderiderapp.domain.usecase.FetchSuggestedAddressesUseCase
 import com.qryde.qryderiderapp.presentation.components.DefaultMapLatitude
 import com.qryde.qryderiderapp.presentation.components.DefaultMapLongitude
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -8,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -18,7 +24,8 @@ data class BookRideUiState(
     val searchQuery: String = "",
     val pickupAddress: String = "Your Current Location",
     val dropoffAddress: String = "",
-    val recentAddresses: List<RecentAddress> = SampleRecentAddresses,
+    val recentAddresses: List<RecentAddress> = emptyList(),
+    val savedTripAddresses: List<SavedTripAddress> = emptyList(),
     val isRecurring: Boolean = false,
     val selectedDays: Set<Int> = emptySet(),
     val startDateLabel: String = "",
@@ -50,10 +57,38 @@ data class BookRideUiState(
 }
 
 @HiltViewModel
-class BookRideViewModel @Inject constructor() : ViewModel() {
+class BookRideViewModel @Inject constructor(
+    private val fetchSuggestedAddressesUseCase: FetchSuggestedAddressesUseCase
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BookRideUiState())
     val uiState: StateFlow<BookRideUiState> = _uiState.asStateFlow()
+
+    init {
+        fetchSuggestedAddresses()
+    }
+
+    private fun fetchSuggestedAddresses() {
+        viewModelScope.launch {
+            when (val result = fetchSuggestedAddressesUseCase()) {
+                is AppResult.Success -> {
+                    val recentAddresses = result.data.recentAddresses.mapIndexed { index, address ->
+                        RecentAddress(
+                            id = index.toString(),
+                            title = address.street,
+                            subtitle = listOf(address.city, address.stateCode, address.zip, address.countryCode)
+                                .filter { it.isNotBlank() }
+                                .joinToString(", ")
+                        )
+                    }
+                    _uiState.update {
+                        it.copy(recentAddresses = recentAddresses, savedTripAddresses = result.data.savedTripAddresses)
+                    }
+                }
+                is AppResult.Error -> AppLogger.w(TAG, "Failed to fetch suggested addresses: ${result.message}")
+            }
+        }
+    }
 
     fun onSearchQueryChanged(value: String) {
         _uiState.update { it.copy(searchQuery = value) }
@@ -190,5 +225,10 @@ class BookRideViewModel @Inject constructor() : ViewModel() {
     /** Resets the draft after a booking is (mock) confirmed. */
     fun onBookingConfirmed() {
         _uiState.value = BookRideUiState()
+        fetchSuggestedAddresses()
+    }
+
+    private companion object {
+        const val TAG = "SuggestedAddress"
     }
 }

@@ -100,6 +100,10 @@ dependencies {
 
     implementation(libs.osmdroid.android)
 
+    implementation(libs.braintree.dropin) {
+        exclude(group = "org.jfrog.cardinalcommerce.gradle", module = "cardinalmobilesdk")
+    }
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)

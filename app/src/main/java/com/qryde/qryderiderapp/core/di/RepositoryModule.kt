@@ -1,6 +1,7 @@
 package com.qryde.qryderiderapp.core.di
 
 import com.qryde.qryderiderapp.data.repository.AuthRepositoryImpl
+import com.qryde.qryderiderapp.data.repository.BraintreeRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.CommunityRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.DeviceRegistrationRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.ForgotPasswordRepositoryImpl
@@ -8,7 +9,9 @@ import com.qryde.qryderiderapp.data.repository.OeRegistryRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.RegistrationRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.ServerConfigRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.SmsVerificationRepositoryImpl
+import com.qryde.qryderiderapp.data.repository.SuggestedAddressRepositoryImpl
 import com.qryde.qryderiderapp.domain.repository.AuthRepository
+import com.qryde.qryderiderapp.domain.repository.BraintreeRepository
 import com.qryde.qryderiderapp.domain.repository.CommunityRepository
 import com.qryde.qryderiderapp.domain.repository.DeviceRegistrationRepository
 import com.qryde.qryderiderapp.domain.repository.ForgotPasswordRepository
@@ -16,6 +19,7 @@ import com.qryde.qryderiderapp.domain.repository.OeRegistryRepository
 import com.qryde.qryderiderapp.domain.repository.RegistrationRepository
 import com.qryde.qryderiderapp.domain.repository.ServerConfigRepository
 import com.qryde.qryderiderapp.domain.repository.SmsVerificationRepository
+import com.qryde.qryderiderapp.domain.repository.SuggestedAddressRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -48,4 +52,10 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindRegistrationRepository(impl: RegistrationRepositoryImpl): RegistrationRepository
+
+    @Binds
+    abstract fun bindBraintreeRepository(impl: BraintreeRepositoryImpl): BraintreeRepository
+
+    @Binds
+    abstract fun bindSuggestedAddressRepository(impl: SuggestedAddressRepositoryImpl): SuggestedAddressRepository
 }
