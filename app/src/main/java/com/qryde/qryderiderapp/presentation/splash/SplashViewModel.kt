@@ -6,6 +6,7 @@ import com.qryde.qryderiderapp.core.common.AppResult
 import com.qryde.qryderiderapp.core.logging.AppLogger
 import com.qryde.qryderiderapp.core.utils.AppConfig
 import com.qryde.qryderiderapp.domain.usecase.AttemptSilentLoginUseCase
+import com.qryde.qryderiderapp.domain.usecase.FetchClientDataUseCase
 import com.qryde.qryderiderapp.domain.usecase.FetchJoinedCommunitiesUseCase
 import com.qryde.qryderiderapp.domain.usecase.FetchOeRegistryValuesUseCase
 import com.qryde.qryderiderapp.domain.usecase.ResolveServerConfigUseCase
@@ -26,7 +27,8 @@ class SplashViewModel @Inject constructor(
     private val resolveServerConfigUseCase: ResolveServerConfigUseCase,
     private val fetchOeRegistryValuesUseCase: FetchOeRegistryValuesUseCase,
     private val attemptSilentLoginUseCase: AttemptSilentLoginUseCase,
-    private val fetchJoinedCommunitiesUseCase: FetchJoinedCommunitiesUseCase
+    private val fetchJoinedCommunitiesUseCase: FetchJoinedCommunitiesUseCase,
+    private val fetchClientDataUseCase: FetchClientDataUseCase
 ) : ViewModel() {
 
     val appName: String = appConfig.appName
@@ -71,7 +73,12 @@ class SplashViewModel @Inject constructor(
         return when (silentLoginResult) {
             is AppResult.Success -> {
                 when (val communitiesResult = fetchJoinedCommunitiesUseCase(silentLoginResult.data.userId)) {
-                    is AppResult.Success -> Unit
+                    is AppResult.Success -> {
+                        when (val clientDataResult = fetchClientDataUseCase()) {
+                            is AppResult.Success -> Unit
+                            is AppResult.Error -> AppLogger.w(TAG, clientDataResult.message)
+                        }
+                    }
                     is AppResult.Error -> AppLogger.w(TAG, communitiesResult.message)
                 }
                 SplashNavigationEvent.NavigateToHome

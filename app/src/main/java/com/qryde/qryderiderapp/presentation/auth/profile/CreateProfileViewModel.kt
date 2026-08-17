@@ -9,6 +9,7 @@ import com.qryde.qryderiderapp.domain.model.NewAccountDetails
 import com.qryde.qryderiderapp.domain.usecase.CheckEmailAvailableUseCase
 import com.qryde.qryderiderapp.domain.usecase.CheckUserIdAvailableUseCase
 import com.qryde.qryderiderapp.domain.usecase.CreateAccountUseCase
+import com.qryde.qryderiderapp.domain.usecase.FetchClientDataUseCase
 import com.qryde.qryderiderapp.domain.usecase.FetchJoinedCommunitiesUseCase
 import com.qryde.qryderiderapp.domain.usecase.LoginUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,7 +33,8 @@ class CreateProfileViewModel @Inject constructor(
     private val checkEmailAvailableUseCase: CheckEmailAvailableUseCase,
     private val createAccountUseCase: CreateAccountUseCase,
     private val loginUseCase: LoginUseCase,
-    private val fetchJoinedCommunitiesUseCase: FetchJoinedCommunitiesUseCase
+    private val fetchJoinedCommunitiesUseCase: FetchJoinedCommunitiesUseCase,
+    private val fetchClientDataUseCase: FetchClientDataUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreateProfileUiState())
@@ -128,7 +130,12 @@ class CreateProfileViewModel @Inject constructor(
                     when (val loginResult = loginUseCase(state.userId, state.password)) {
                         is AppResult.Success -> {
                             when (val communitiesResult = fetchJoinedCommunitiesUseCase(loginResult.data.userId)) {
-                                is AppResult.Success -> Unit
+                                is AppResult.Success -> {
+                                    when (val clientDataResult = fetchClientDataUseCase()) {
+                                        is AppResult.Success -> Unit
+                                        is AppResult.Error -> AppLogger.w(TAG, clientDataResult.message)
+                                    }
+                                }
                                 is AppResult.Error -> AppLogger.w(TAG, communitiesResult.message)
                             }
                         }

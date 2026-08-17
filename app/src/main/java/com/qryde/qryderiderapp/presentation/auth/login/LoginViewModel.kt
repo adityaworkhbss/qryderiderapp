@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qryde.qryderiderapp.core.common.AppResult
 import com.qryde.qryderiderapp.core.logging.AppLogger
+import com.qryde.qryderiderapp.domain.usecase.FetchClientDataUseCase
 import com.qryde.qryderiderapp.domain.usecase.FetchJoinedCommunitiesUseCase
 import com.qryde.qryderiderapp.domain.usecase.LoginUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +26,8 @@ sealed interface LoginEvent {
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val fetchJoinedCommunitiesUseCase: FetchJoinedCommunitiesUseCase
+    private val fetchJoinedCommunitiesUseCase: FetchJoinedCommunitiesUseCase,
+    private val fetchClientDataUseCase: FetchClientDataUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -58,7 +60,12 @@ class LoginViewModel @Inject constructor(
                     // legacy client (it always fetches joined communities right after a
                     // successful 5G, and only branches on isUserActive afterward).
                     when (val communitiesResult = fetchJoinedCommunitiesUseCase(result.data.userId)) {
-                        is AppResult.Success -> Unit
+                        is AppResult.Success -> {
+                            when (val clientDataResult = fetchClientDataUseCase()) {
+                                is AppResult.Success -> Unit
+                                is AppResult.Error -> AppLogger.w(TAG, clientDataResult.message)
+                            }
+                        }
                         is AppResult.Error -> AppLogger.w(TAG, communitiesResult.message)
                     }
                     _uiState.update { it.copy(isSubmitting = false) }
