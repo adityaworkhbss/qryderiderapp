@@ -8,10 +8,14 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
+import com.qryde.qryderiderapp.core.logging.AppLogger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.coroutines.resume
@@ -22,13 +26,17 @@ data class DeviceLocation(
     val stateCode: String?
 )
 
-/**
- * Plain LocationManager + Geocoder - no Play Services location dependency,
- * matching this app's use of osmdroid instead of Google Maps elsewhere.
- */
+@Serializable
+private data class StateCodeEntry(val name: String, val code: String)
+
+private const val STATE_CODES_ASSET = "state_codes.json"
+
 class DeviceLocationResolver @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val json: Json
 ) {
+    private val stateCodesByCountry: Map<String, Map<String, String>> by lazy { loadStateCodes() }
+
     fun hasLocationPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -82,9 +90,32 @@ class DeviceLocationResolver @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 @Suppress("DEPRECATION")
-                Geocoder(context, Locale.US).getFromLocation(latitude, longitude, 1)
-                    ?.firstOrNull()
-                    ?.adminArea
+                val address = Geocoder(context, Locale.US).getFromLocation(latitude, longitude, 1)?.firstOrNull()
+                resolveStateCode(address?.countryCode, address?.adminArea)
             }.getOrNull()
         }
+
+    private fun resolveStateCode(countryCode: String?, adminArea: String?): String? {
+        val name = adminArea?.trim()?.lowercase() ?: return null
+        val country = countryCode?.trim()?.uppercase()
+
+        val byCountry = country?.let { stateCodesByCountry[it]?.get(name) }
+        val byAnyCountry = byCountry ?: stateCodesByCountry.values.firstNotNullOfOrNull { it[name] }
+
+        return byAnyCountry
+            ?: adminArea.trim().takeIf { it.length in 2..3 && it.all(Char::isLetter) }?.uppercase()
+    }
+
+    private fun loadStateCodes(): Map<String, Map<String, String>> = try {
+        val raw = context.assets.open(STATE_CODES_ASSET).bufferedReader().use { it.readText() }
+        json.decodeFromString<Map<String, List<StateCodeEntry>>>(raw)
+            .mapValues { (_, entries) -> entries.associate { it.name.trim().lowercase() to it.code.trim().uppercase() } }
+    } catch (e: Exception) {
+        AppLogger.e(TAG, "Failed to load $STATE_CODES_ASSET", e)
+        emptyMap()
+    }
+
+    private companion object {
+        const val TAG = "DeviceLocation"
+    }
 }

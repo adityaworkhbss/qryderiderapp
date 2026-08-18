@@ -35,12 +35,6 @@ sealed interface CommunitySelectionUiState {
 
 private const val LOCATION_TIMEOUT_MS = 15_000L
 
-/**
- * Drives the one-time "pick your community" flow for riders who haven't set
- * a preferred community yet: enable-location prompt -> GPS fix -> reverse
- * geocode to a state -> 20SC -> let the rider pick (nearest pre-highlighted).
- * Scoped to MainScaffold, so it only ever runs once per session.
- */
 @HiltViewModel
 class CommunitySelectionViewModel @Inject constructor(
     appConfig: AppConfig,
