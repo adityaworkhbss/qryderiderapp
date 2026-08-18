@@ -3,6 +3,7 @@ package com.qryde.qryderiderapp.data.repository
 import android.content.Context
 import com.qryde.qryderiderapp.core.common.AppResult
 import com.qryde.qryderiderapp.core.logging.AppLogger
+import com.qryde.qryderiderapp.data.datastore.DeviceRegistrationDataStore
 import com.qryde.qryderiderapp.data.datastore.ServerConfigDataStore
 import com.qryde.qryderiderapp.data.mapper.DeviceRegistrationFailedException
 import com.qryde.qryderiderapp.data.mapper.RegistrationCheckFailedException
@@ -38,6 +39,7 @@ import javax.inject.Inject
 class RegistrationRepositoryImpl @Inject constructor(
     private val qtipCommandClient: QtipCommandClient,
     private val serverConfigDataStore: ServerConfigDataStore,
+    private val deviceRegistrationDataStore: DeviceRegistrationDataStore,
     @ApplicationContext private val context: Context
 ) : RegistrationRepository {
 
@@ -108,7 +110,7 @@ class RegistrationRepositoryImpl @Inject constructor(
                 command = CREATE_ACCOUNT_COMMAND,
                 data = data
             )
-            rawResponse.requireDeviceRegistered()
+            rawResponse.requireDeviceRegistered()?.let { deviceRegistrationDataStore.save(it) }
             AppResult.Success(Unit)
         } catch (e: DeviceRegistrationFailedException) {
             AppResult.Error(e.message ?: "Could not create your account.")

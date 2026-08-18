@@ -3,6 +3,7 @@ package com.qryde.qryderiderapp.data.repository
 import android.content.Context
 import com.qryde.qryderiderapp.core.common.AppResult
 import com.qryde.qryderiderapp.core.logging.AppLogger
+import com.qryde.qryderiderapp.data.datastore.DeviceRegistrationDataStore
 import com.qryde.qryderiderapp.data.datastore.LoginCredentialsDataStore
 import com.qryde.qryderiderapp.data.datastore.LoginSessionDataStore
 import com.qryde.qryderiderapp.data.datastore.ServerConfigDataStore
@@ -29,6 +30,7 @@ class DeviceRegistrationRepositoryImpl @Inject constructor(
     private val serverConfigDataStore: ServerConfigDataStore,
     private val loginSessionDataStore: LoginSessionDataStore,
     private val loginCredentialsDataStore: LoginCredentialsDataStore,
+    private val deviceRegistrationDataStore: DeviceRegistrationDataStore,
     @ApplicationContext private val context: Context
 ) : DeviceRegistrationRepository {
 
@@ -62,7 +64,7 @@ class DeviceRegistrationRepositoryImpl @Inject constructor(
                     command = REGISTER_DEVICE_COMMAND,
                     data = data
                 )
-                rawResponse.requireDeviceRegistered()
+                rawResponse.requireDeviceRegistered()?.let { deviceRegistrationDataStore.save(it) }
                 return AppResult.Success(Unit)
             } catch (e: CancellationException) {
                 throw e

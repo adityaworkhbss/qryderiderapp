@@ -55,7 +55,6 @@ fun PaymentsScreen(
     PaymentsContent(
         uiState = uiState,
         purchases = viewModel.purchases,
-        transactions = viewModel.transactions,
         onTabSelected = viewModel::onTabSelected,
         onAddFunds = onAddFunds,
         onFilterSheetRequested = viewModel::onFilterSheetRequested,
@@ -71,7 +70,6 @@ fun PaymentsScreen(
 private fun PaymentsContent(
     uiState: PaymentsUiState,
     purchases: List<PurchaseItem>,
-    transactions: List<TransactionItem>,
     onTabSelected: (PaymentsTab) -> Unit,
     onAddFunds: () -> Unit,
     onFilterSheetRequested: () -> Unit,
@@ -106,7 +104,7 @@ private fun PaymentsContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "$${uiState.availableBalanceCents / 100}.${(uiState.availableBalanceCents % 100).toString().padStart(2, '0')}",
+                    "$${"%.2f".format(uiState.availableFunds)}",
                     color = Color.White,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
@@ -158,9 +156,17 @@ private fun PaymentsContent(
                 title = "Transactions",
                 onFilterClicked = onFilterSheetRequested
             ) {
-                transactions.groupBy { it.dateGroup }.forEach { (date, items) ->
-                    DateGroupHeader(date)
-                    items.forEach { TransactionRow(it) }
+                if (uiState.transactions.isEmpty()) {
+                    Text(
+                        "No transactions yet.",
+                        color = Color(0xFF9AA0A6),
+                        modifier = Modifier.padding(vertical = 24.dp)
+                    )
+                } else {
+                    uiState.transactions.groupBy { it.dateGroup }.forEach { (date, items) ->
+                        DateGroupHeader(date)
+                        items.forEach { TransactionRow(it) }
+                    }
                 }
             }
             PaymentsTab.PURCHASES -> ListTab(
@@ -270,18 +276,7 @@ private fun TransactionRow(item: TransactionItem) {
                 Text(item.title, fontWeight = FontWeight.SemiBold)
                 Text(item.time, style = MaterialTheme.typography.labelLarge, color = Color(0xFF9AA0A6))
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    item.amount,
-                    color = if (item.isCredit) QrydePrimary else Color(0xFFE53935),
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    item.statusLabel,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (item.isCredit) QrydePrimary else Color(0xFFE53935)
-                )
-            }
+            Text(item.paidAmount, color = QrydePrimary, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(8.dp))
         Row(
@@ -295,8 +290,8 @@ private fun TransactionRow(item: TransactionItem) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Paid Mode", style = MaterialTheme.typography.labelLarge, color = Color(0xFF9AA0A6))
-            Text(item.paidMode, style = MaterialTheme.typography.labelLarge)
+            Text("Deposit Amount", style = MaterialTheme.typography.labelLarge, color = Color(0xFF9AA0A6))
+            Text(item.depositAmount, style = MaterialTheme.typography.labelLarge)
         }
     }
     Spacer(modifier = Modifier.height(8.dp))
@@ -385,7 +380,6 @@ private fun PaymentsContentPreview() {
     PaymentsContent(
         uiState = PaymentsUiState(),
         purchases = SamplePurchases,
-        transactions = SampleTransactions,
         onTabSelected = {},
         onAddFunds = {},
         onFilterSheetRequested = {},

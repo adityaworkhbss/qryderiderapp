@@ -1,6 +1,7 @@
 package com.qryde.qryderiderapp.core.di
 
 import com.qryde.qryderiderapp.data.repository.AuthRepositoryImpl
+import com.qryde.qryderiderapp.data.repository.AvailableFundsRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.BraintreeRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.ClientDataRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.CommunityRepositoryImpl
@@ -13,7 +14,9 @@ import com.qryde.qryderiderapp.data.repository.ServerConfigRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.SmsVerificationRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.StateCommunityRepositoryImpl
 import com.qryde.qryderiderapp.data.repository.SuggestedAddressRepositoryImpl
+import com.qryde.qryderiderapp.data.repository.TransactionsRepositoryImpl
 import com.qryde.qryderiderapp.domain.repository.AuthRepository
+import com.qryde.qryderiderapp.domain.repository.AvailableFundsRepository
 import com.qryde.qryderiderapp.domain.repository.BraintreeRepository
 import com.qryde.qryderiderapp.domain.repository.ClientDataRepository
 import com.qryde.qryderiderapp.domain.repository.CommunityRepository
@@ -26,6 +29,7 @@ import com.qryde.qryderiderapp.domain.repository.ServerConfigRepository
 import com.qryde.qryderiderapp.domain.repository.SmsVerificationRepository
 import com.qryde.qryderiderapp.domain.repository.StateCommunityRepository
 import com.qryde.qryderiderapp.domain.repository.SuggestedAddressRepository
+import com.qryde.qryderiderapp.domain.repository.TransactionsRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -73,4 +77,10 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindPreferredCommunityRepository(impl: PreferredCommunityRepositoryImpl): PreferredCommunityRepository
+
+    @Binds
+    abstract fun bindTransactionsRepository(impl: TransactionsRepositoryImpl): TransactionsRepository
+
+    @Binds
+    abstract fun bindAvailableFundsRepository(impl: AvailableFundsRepositoryImpl): AvailableFundsRepository
 }
