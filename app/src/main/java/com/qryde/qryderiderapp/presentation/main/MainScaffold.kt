@@ -1,22 +1,35 @@
 package com.qryde.qryderiderapp.presentation.main
 
+import android.widget.Toast
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -49,6 +62,16 @@ private val bottomNavTabs = listOf(
 @Composable
 fun MainScaffold() {
     hiltViewModel<BraintreeViewModel>()
+
+    val communitySelectionViewModel = hiltViewModel<CommunitySelectionViewModel>()
+    val communitySelectionState by communitySelectionViewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        communitySelectionViewModel.errorEvent.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     val navController = rememberNavController()
 
@@ -83,6 +106,32 @@ fun MainScaffold() {
             modifier = Modifier.padding(innerPadding)
         ) {
             mainTabNavGraph(navController)
+        }
+    }
+
+    when (val state = communitySelectionState) {
+        CommunitySelectionUiState.Hidden -> Unit
+        CommunitySelectionUiState.EnableLocationPrompt -> EnableLocationDialog(
+            onUseMyLocation = communitySelectionViewModel::onUseMyLocationClicked,
+            onSkip = communitySelectionViewModel::onSkipped
+        )
+        CommunitySelectionUiState.ResolvingLocation -> ResolvingLocationDialog()
+        is CommunitySelectionUiState.PickCommunity -> SelectStateCommunityDialog(
+            communities = state.communities,
+            nearestCommunityId = state.nearestCommunityId,
+            onCommunitySelected = communitySelectionViewModel::onCommunitySelected,
+            onDismiss = communitySelectionViewModel::onSkipped
+        )
+    }
+}
+
+@Composable
+private fun ResolvingLocationDialog() {
+    Dialog(onDismissRequest = {}) {
+        Surface(shape = RoundedCornerShape(20.dp), color = Color.White) {
+            Box(modifier = Modifier.size(96.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
         }
     }
 }

@@ -19,5 +19,6 @@ data class AppConfig(
     val appName: String,
     val isDeveloperMode: Boolean,
     val bypassOtp: Boolean,
-    val sendAnalytics: Boolean
+    val sendAnalytics: Boolean,
+    val isShowCommunitySelection: Boolean
 )

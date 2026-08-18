@@ -2,6 +2,7 @@
     <bool name="isDeveloperMode">true</bool>
     <bool name="bypassOtp">false</bool>
     <bool name="isSendAnalytics">false</bool>
+    <bool name="isShowCommunitySelection">true</bool>
 
     <string name="api_base_url">https://staging.qryde.com/</string>
     <string name="websocket_url">wss://staging.qryde.com/ws</string>

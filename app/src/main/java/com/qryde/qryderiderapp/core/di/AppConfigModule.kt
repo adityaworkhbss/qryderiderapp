@@ -35,7 +35,8 @@ object AppConfigModule {
             appName = resources.getString(R.string.app_name),
             isDeveloperMode = resources.getBoolean(R.bool.isDeveloperMode),
             bypassOtp = resources.getBoolean(R.bool.bypassOtp),
-            sendAnalytics = resources.getBoolean(R.bool.isSendAnalytics)
+            sendAnalytics = resources.getBoolean(R.bool.isSendAnalytics),
+            isShowCommunitySelection = resources.getBoolean(R.bool.isShowCommunitySelection)
         )
     }
 }

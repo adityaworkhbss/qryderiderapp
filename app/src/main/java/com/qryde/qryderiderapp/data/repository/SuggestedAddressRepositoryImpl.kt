@@ -4,6 +4,7 @@ import com.qryde.qryderiderapp.core.common.AppResult
 import com.qryde.qryderiderapp.core.logging.AppLogger
 import com.qryde.qryderiderapp.data.datastore.CommunityDataStore
 import com.qryde.qryderiderapp.data.datastore.LoginSessionDataStore
+import com.qryde.qryderiderapp.data.datastore.PreferredCommunityDataStore
 import com.qryde.qryderiderapp.data.datastore.ServerConfigDataStore
 import com.qryde.qryderiderapp.data.mapper.toSuggestedAddresses
 import com.qryde.qryderiderapp.data.remote.rest.QtipCommandClient
@@ -25,7 +26,8 @@ class SuggestedAddressRepositoryImpl @Inject constructor(
     private val qtipCommandClient: QtipCommandClient,
     private val serverConfigDataStore: ServerConfigDataStore,
     private val loginSessionDataStore: LoginSessionDataStore,
-    private val communityDataStore: CommunityDataStore
+    private val communityDataStore: CommunityDataStore,
+    private val preferredCommunityDataStore: PreferredCommunityDataStore
 ) : SuggestedAddressRepository {
 
     override suspend fun fetchSuggestedAddresses(): AppResult<SuggestedAddresses> {
@@ -42,7 +44,8 @@ class SuggestedAddressRepositoryImpl @Inject constructor(
         }
 
         val communities = communityDataStore.current.first()
-        val communityId = communities.firstOrNull { it.isPreferred }?.id
+        val communityId = preferredCommunityDataStore.current.first()?.takeIf { it.isNotBlank() }
+            ?: communities.firstOrNull { it.isPreferred }?.id
             ?: communities.firstOrNull()?.id
             ?: ""
 

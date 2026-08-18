@@ -6,9 +6,9 @@ import com.qryde.qryderiderapp.data.datastore.ClientDataStore
 import com.qryde.qryderiderapp.data.datastore.CommunityDataStore
 import com.qryde.qryderiderapp.data.datastore.LoginSessionDataStore
 import com.qryde.qryderiderapp.data.datastore.OeRegistryDataStore
+import com.qryde.qryderiderapp.data.datastore.PreferredCommunityDataStore
 import com.qryde.qryderiderapp.data.datastore.ServerConfigDataStore
-import com.qryde.qryderiderapp.data.mapper.DEFAULT_CLIENT_TYPE
-import com.qryde.qryderiderapp.data.mapper.resolveClientType
+import com.qryde.qryderiderapp.data.mapper.communitySiteConfig
 import com.qryde.qryderiderapp.data.mapper.toNemtClientInfo
 import com.qryde.qryderiderapp.data.remote.rest.QtipCommandClient
 import com.qryde.qryderiderapp.domain.model.NemtClientInfo
@@ -33,7 +33,8 @@ class ClientDataRepositoryImpl @Inject constructor(
     private val loginSessionDataStore: LoginSessionDataStore,
     private val communityDataStore: CommunityDataStore,
     private val oeRegistryDataStore: OeRegistryDataStore,
-    private val clientDataStore: ClientDataStore
+    private val clientDataStore: ClientDataStore,
+    private val preferredCommunityDataStore: PreferredCommunityDataStore
 ) : ClientDataRepository {
 
     override suspend fun fetchClientDataIfEligible(): AppResult<NemtClientInfo?> {
@@ -44,12 +45,13 @@ class ClientDataRepositoryImpl @Inject constructor(
         }
 
         val communities = communityDataStore.current.first()
-        val preferredCommunityId = communities.firstOrNull { it.isPreferred }?.id
+        val preferredCommunityId = preferredCommunityDataStore.current.first()?.takeIf { it.isNotBlank() }
+            ?: communities.firstOrNull { it.isPreferred }?.id
             ?: communities.firstOrNull()?.id
             ?: ""
 
-        val oeRegistryValues = oeRegistryDataStore.current.first()
-        val clientType = oeRegistryValues?.resolveClientType(preferredCommunityId) ?: DEFAULT_CLIENT_TYPE
+        val siteConfig = oeRegistryDataStore.current.first()?.communitySiteConfig(preferredCommunityId)
+        val clientType = siteConfig?.valueFor(CLIENT_TYPE_KEY, DEFAULT_CLIENT_TYPE) ?: DEFAULT_CLIENT_TYPE
         if (clientType.equals(PT1_CLIENT_TYPE, ignoreCase = true)) {
             AppLogger.d(TAG, "ClientType is PT1, skipping $CLIENT_DATA_COMMAND")
             clientDataStore.save(null)
@@ -86,6 +88,8 @@ class ClientDataRepositoryImpl @Inject constructor(
         const val TAG = "ClientData"
         const val QTIP_REST_ENDPOINT_KEY = "QREST2_TestServer_IPPORT"
         const val CLIENT_DATA_COMMAND = "5CMD"
+        const val CLIENT_TYPE_KEY = "ClientType"
+        const val DEFAULT_CLIENT_TYPE = "NONPT1"
         const val PT1_CLIENT_TYPE = "PT1"
         val COLUMN_SEPARATOR = 14.toChar()
     }
