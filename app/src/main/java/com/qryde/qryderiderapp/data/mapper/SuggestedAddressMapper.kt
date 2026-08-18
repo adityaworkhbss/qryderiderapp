@@ -5,7 +5,7 @@ import com.qryde.qryderiderapp.domain.model.SavedTripAddress
 import com.qryde.qryderiderapp.domain.model.SuggestedAddresses
 
 private const val NULL_PLACEHOLDER = "..."
-private const val NO_DATA_FOUND = "no data found"
+private const val NO_DATA_FOUND = "no_data_found"
 private val GROUP_SEPARATOR = 12.toChar()
 private val RECORD_SEPARATOR = 15.toChar()
 private val FIELD_SEPARATOR = 14.toChar()
@@ -28,13 +28,17 @@ fun String.toSuggestedAddresses(): SuggestedAddresses {
     val savedGroup = groups.getOrNull(1).orEmpty()
 
     val recentAddresses = if (!recentGroup.isMissing()) {
-        recentGroup.split(RECORD_SEPARATOR).map { it.toRecentAddressSuggestion() }
+        recentGroup.split(RECORD_SEPARATOR)
+            .filterNot { it.isMissing() }
+            .map { it.toRecentAddressSuggestion() }
     } else {
         emptyList()
     }
 
     val savedTripAddresses = if (!savedGroup.isMissing()) {
-        savedGroup.split(RECORD_SEPARATOR).map { it.toSavedTripAddress() }
+        savedGroup.split(RECORD_SEPARATOR)
+            .filterNot { it.isMissing() }
+            .map { it.toSavedTripAddress() }
     } else {
         emptyList()
     }

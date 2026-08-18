@@ -75,9 +75,11 @@ fun HomeScreen(
     viewModel: BookRideViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val addressSuggestions by viewModel.addressSuggestions.collectAsStateWithLifecycle()
 
     HomeContent(
         uiState = uiState,
+        addressSuggestions = addressSuggestions,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onDestinationSelected = viewModel::onDestinationSelected,
         onTripTypeChanged = viewModel::onTripTypeChanged,
@@ -110,6 +112,7 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     uiState: BookRideUiState,
+    addressSuggestions: List<RecentAddress> = emptyList(),
     onSearchQueryChanged: (String) -> Unit,
     onDestinationSelected: (String) -> Unit,
     onTripTypeChanged: (Boolean) -> Unit,
@@ -148,6 +151,7 @@ private fun HomeContent(
             when (uiState.step) {
                 BookingStep.SEARCH -> SearchSheetContent(
                     uiState = uiState,
+                    addressSuggestions = addressSuggestions,
                     onSearchQueryChanged = onSearchQueryChanged,
                     onDestinationSelected = onDestinationSelected,
                     onSetLocationOnMapRequested = onSetLocationOnMapRequested
@@ -203,16 +207,21 @@ private fun HomeContent(
 @Composable
 private fun SearchSheetContent(
     uiState: BookRideUiState,
+    addressSuggestions: List<RecentAddress>,
     onSearchQueryChanged: (String) -> Unit,
     onDestinationSelected: (String) -> Unit,
     onSetLocationOnMapRequested: () -> Unit
 ) {
     var isSearchFocused by remember { mutableStateOf(false) }
-    val suggestions = remember(uiState.searchQuery, uiState.recentAddresses) {
-        if (uiState.searchQuery.isBlank()) {
-            uiState.recentAddresses
-        } else {
-            uiState.recentAddresses.filter {
+    // Live backend type-ahead search (see BookRideViewModel) wins once it has
+    // results; otherwise fall back to filtering the already-fetched recent
+    // addresses locally - covers both "not typing yet" and "RL search isn't
+    // configured for this community" (see AddressSearchRepository).
+    val suggestions = remember(uiState.searchQuery, uiState.recentAddresses, addressSuggestions) {
+        when {
+            uiState.searchQuery.isBlank() -> uiState.recentAddresses
+            addressSuggestions.isNotEmpty() -> addressSuggestions
+            else -> uiState.recentAddresses.filter {
                 it.title.contains(uiState.searchQuery, ignoreCase = true) ||
                     it.subtitle.contains(uiState.searchQuery, ignoreCase = true)
             }
@@ -234,44 +243,22 @@ private fun SearchSheetContent(
 
         if (isSearchFocused) {
             Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                    if (suggestions.isEmpty()) {
-                        Text(
-                            "No matching addresses",
-                            color = Color(0xFF9AA0A6),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+            RecentAddressSuggestionsCard(suggestions = suggestions, onDestinationSelected = onDestinationSelected)
+        } else {
+            if (uiState.quickPlaces.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    uiState.quickPlaces.take(2).forEach { place ->
+                        QuickPlaceChip(
+                            icon = place.icon.toImageVector(),
+                            title = place.label,
+                            subtitle = place.subtitle,
+                            onClick = { onDestinationSelected(place.destinationAddress) },
+                            modifier = Modifier.weight(1f)
                         )
-                    } else {
-                        suggestions.forEach { address ->
-                            RecentAddressRow(address = address, onClick = { onDestinationSelected(address.title) })
-                        }
                     }
                 }
-            }
-        } else {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                QuickPlaceChip(
-                    icon = Icons.Filled.Home,
-                    title = "Home",
-                    subtitle = "Sector 15, Noida, uttar...",
-                    onClick = { onDestinationSelected("Sector 15, Noida, Uttar Pradesh") },
-                    modifier = Modifier.weight(1f)
-                )
-                QuickPlaceChip(
-                    icon = Icons.Filled.Business,
-                    title = "Office",
-                    subtitle = "Sector 18, Haryana",
-                    onClick = { onDestinationSelected("Sector 18, Haryana") },
-                    modifier = Modifier.weight(1f)
-                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -292,6 +279,57 @@ private fun SearchSheetContent(
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
+}
+
+@Composable
+private fun RecentAddressSuggestionsCard(
+    suggestions: List<RecentAddress>,
+    onDestinationSelected: (String) -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            if (suggestions.isEmpty()) {
+                Text(
+                    "No matching addresses",
+                    color = Color(0xFF9AA0A6),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+                )
+            } else {
+                suggestions.forEach { address ->
+                    RecentAddressRow(address = address, onClick = { onDestinationSelected(address.destinationAddress) })
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RecentAddressSuggestionsCardPreview() {
+    RecentAddressSuggestionsCard(
+        suggestions = listOf(
+            RecentAddress(id = "1", title = "456 Elm St", subtitle = "Brooklyn, NY, 11201, US"),
+            RecentAddress(id = "2", title = "789 Broadway", subtitle = "Manhattan, NY, 10003, US")
+        ),
+        onDestinationSelected = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun RecentAddressSuggestionsCardEmptyPreview() {
+    RecentAddressSuggestionsCard(suggestions = emptyList(), onDestinationSelected = {})
+}
+
+private fun QuickPlaceIcon.toImageVector(): ImageVector = when (this) {
+    QuickPlaceIcon.HOME -> Icons.Filled.Home
+    QuickPlaceIcon.OFFICE -> Icons.Filled.Business
+    QuickPlaceIcon.OTHER -> Icons.Filled.LocationOn
 }
 
 @Composable
@@ -709,6 +747,61 @@ private fun ServiceRow(service: ServiceOption, selected: Boolean, onClick: () ->
 private fun HomeContentSearchPreview() {
     HomeContent(
         uiState = BookRideUiState(),
+        onSearchQueryChanged = {},
+        onDestinationSelected = {},
+        onTripTypeChanged = {},
+        onDayToggled = {},
+        onDatePickerRequested = {},
+        onDatePickerDismissed = {},
+        onDateSelected = {},
+        onTimePickerRequested = {},
+        onTimePickerDismissed = {},
+        onTimeSelected = { _, _ -> },
+        onAlternatePhoneChanged = {},
+        onEscortCountChanged = {},
+        onOpenAdditionalInformation = {},
+        onProceedToChooseService = {},
+        onServiceSelected = {},
+        onPaymentMethodSheetRequested = {},
+        onPaymentMethodSheetDismissed = {},
+        onPaymentMethodSelected = {},
+        onBackToSearch = {},
+        onBackToRideDetails = {},
+        onBookingConfirmed = {},
+        onSetLocationOnMapRequested = {},
+        onMapPickerCenterChanged = { _, _ -> },
+        onSetLocationSheetDismissed = {},
+        onLocationOnMapSaved = {}
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+private fun HomeContentSearchWithDataPreview() {
+    HomeContent(
+        uiState = BookRideUiState(
+            recentAddresses = listOf(
+                RecentAddress(id = "1", title = "456 Elm St", subtitle = "Brooklyn, NY, 11201, US"),
+                RecentAddress(id = "2", title = "789 Broadway", subtitle = "Manhattan, NY, 10003, US")
+            ),
+            quickPlaces = listOf(
+                QuickPlace(
+                    id = "trip-1",
+                    label = "Home",
+                    subtitle = "Noida, UP",
+                    destinationAddress = "Sector 15, Noida, UP",
+                    icon = QuickPlaceIcon.HOME
+                ),
+                QuickPlace(
+                    id = "trip-2",
+                    label = "Work",
+                    subtitle = "Gurugram, HR",
+                    destinationAddress = "Sector 18, Gurugram, HR",
+                    icon = QuickPlaceIcon.OFFICE
+                )
+            )
+        ),
         onSearchQueryChanged = {},
         onDestinationSelected = {},
         onTripTypeChanged = {},

@@ -4,14 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qryde.qryderiderapp.core.common.AppResult
 import com.qryde.qryderiderapp.core.logging.AppLogger
+import com.qryde.qryderiderapp.domain.model.AddressSuggestion
 import com.qryde.qryderiderapp.domain.model.SavedTripAddress
 import com.qryde.qryderiderapp.domain.usecase.FetchSuggestedAddressesUseCase
+import com.qryde.qryderiderapp.domain.usecase.SearchAddressesUseCase
 import com.qryde.qryderiderapp.presentation.components.DefaultMapLatitude
 import com.qryde.qryderiderapp.presentation.components.DefaultMapLongitude
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -26,6 +32,7 @@ data class BookRideUiState(
     val dropoffAddress: String = "",
     val recentAddresses: List<RecentAddress> = emptyList(),
     val savedTripAddresses: List<SavedTripAddress> = emptyList(),
+    val quickPlaces: List<QuickPlace> = emptyList(),
     val isRecurring: Boolean = false,
     val selectedDays: Set<Int> = emptySet(),
     val startDateLabel: String = "",
@@ -58,15 +65,70 @@ data class BookRideUiState(
 
 @HiltViewModel
 class BookRideViewModel @Inject constructor(
-    private val fetchSuggestedAddressesUseCase: FetchSuggestedAddressesUseCase
+    private val fetchSuggestedAddressesUseCase: FetchSuggestedAddressesUseCase,
+    private val searchAddressesUseCase: SearchAddressesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BookRideUiState())
     val uiState: StateFlow<BookRideUiState> = _uiState.asStateFlow()
 
+    private val _addressSuggestions = MutableStateFlow<List<RecentAddress>>(emptyList())
+    val addressSuggestions: StateFlow<List<RecentAddress>> = _addressSuggestions.asStateFlow()
+
+    private val addressSearchCache = mutableMapOf<String, List<RecentAddress>>()
+
     init {
         fetchSuggestedAddresses()
+        observeSearchQueryForLiveAddressSearch()
     }
+
+    /**
+     * Backend type-ahead address search (see AddressSearchRepository), debounced
+     * and cached by sanitized query - mirrors the legacy client's RL search
+     * (min 3 alphanumeric chars, 300ms debounce, in-memory cache by query).
+     * Falls back to local filtering over recentAddresses (see HomeScreen) when
+     * this community has no RL search configured, or while results are empty.
+     */
+    private fun observeSearchQueryForLiveAddressSearch() {
+        viewModelScope.launch {
+            _uiState.map { it.searchQuery }
+                .distinctUntilChanged()
+                .debounce(SEARCH_DEBOUNCE_MILLIS)
+                .collectLatest { query -> updateAddressSuggestions(query) }
+        }
+    }
+
+    private suspend fun updateAddressSuggestions(query: String) {
+        val sanitizedQuery = query.replace(NON_ALPHANUMERIC_REGEX, "")
+        if (sanitizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+            _addressSuggestions.value = emptyList()
+            return
+        }
+
+        addressSearchCache[sanitizedQuery]?.let {
+            _addressSuggestions.value = it
+            return
+        }
+
+        when (val result = searchAddressesUseCase(sanitizedQuery)) {
+            is AppResult.Success -> {
+                val suggestions = result.data.map { it.toRecentAddress() }
+                addressSearchCache[sanitizedQuery] = suggestions
+                _addressSuggestions.value = suggestions
+            }
+            is AppResult.Error -> {
+                AppLogger.d(TAG, "Live address search unavailable, using local suggestions: ${result.message}")
+                _addressSuggestions.value = emptyList()
+            }
+        }
+    }
+
+    private fun AddressSuggestion.toRecentAddress() = RecentAddress(
+        id = fullAddress,
+        title = title,
+        subtitle = subtitle,
+        destinationAddress = fullAddress
+    )
 
     private fun fetchSuggestedAddresses() {
         viewModelScope.launch {
@@ -81,13 +143,48 @@ class BookRideViewModel @Inject constructor(
                                 .joinToString(", ")
                         )
                     }
+                    val quickPlaces = result.data.savedTripAddresses
+                        .mapNotNull { it.toQuickPlace() }
+                        .distinctBy { it.label.lowercase() }
                     _uiState.update {
-                        it.copy(recentAddresses = recentAddresses, savedTripAddresses = result.data.savedTripAddresses)
+                        it.copy(
+                            recentAddresses = recentAddresses,
+                            savedTripAddresses = result.data.savedTripAddresses,
+                            quickPlaces = quickPlaces
+                        )
                     }
                 }
                 is AppResult.Error -> AppLogger.w(TAG, "Failed to fetch suggested addresses: ${result.message}")
             }
         }
+    }
+
+    /**
+     * The saved trip's dropoff is treated as the shortcut's destination; purpose
+     * (e.g. "Home", "Work") is its label. Trips with no purpose or no dropoff
+     * address aren't meaningful shortcuts, so they're dropped rather than shown
+     * as a generic placeholder.
+     */
+    private fun SavedTripAddress.toQuickPlace(): QuickPlace? {
+        if (purpose.isBlank()) return null
+        val label = purpose
+        val subtitle = listOf(dropoffCity, dropoffStateCode).filter { it.isNotBlank() }.joinToString(", ")
+        val destinationAddress = listOf(dropoffStreet, dropoffCity, dropoffStateCode, dropoffZip)
+            .filter { it.isNotBlank() }
+            .joinToString(", ")
+        if (destinationAddress.isBlank()) return null
+        val icon = when {
+            label.equals("home", ignoreCase = true) -> QuickPlaceIcon.HOME
+            label.equals("work", ignoreCase = true) || label.equals("office", ignoreCase = true) -> QuickPlaceIcon.OFFICE
+            else -> QuickPlaceIcon.OTHER
+        }
+        return QuickPlace(
+            id = tripId.ifBlank { label },
+            label = label,
+            subtitle = subtitle,
+            destinationAddress = destinationAddress,
+            icon = icon
+        )
     }
 
     fun onSearchQueryChanged(value: String) {
@@ -230,5 +327,8 @@ class BookRideViewModel @Inject constructor(
 
     private companion object {
         const val TAG = "SuggestedAddress"
+        const val SEARCH_DEBOUNCE_MILLIS = 300L
+        const val MIN_SEARCH_QUERY_LENGTH = 3
+        val NON_ALPHANUMERIC_REGEX = Regex("[^a-zA-Z0-9]")
     }
 }

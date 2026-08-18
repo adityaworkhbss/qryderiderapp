@@ -15,7 +15,19 @@ enum class DatePickerTarget {
 data class RecentAddress(
     val id: String,
     val title: String,
-    val subtitle: String
+    val subtitle: String,
+    val destinationAddress: String = title
+)
+
+enum class QuickPlaceIcon { HOME, OFFICE, OTHER }
+
+/** A saved trip's destination, shown as a one-tap shortcut (e.g. "Home", "Work"). */
+data class QuickPlace(
+    val id: String,
+    val label: String,
+    val subtitle: String,
+    val destinationAddress: String,
+    val icon: QuickPlaceIcon
 )
 
 data class ServiceOption(

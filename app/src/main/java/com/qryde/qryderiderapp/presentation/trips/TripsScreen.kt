@@ -49,9 +49,10 @@ fun TripsScreen(
     viewModel: TripsViewModel = hiltViewModel()
 ) {
     val selectedStatus by viewModel.selectedStatus.collectAsStateWithLifecycle()
+    val trips by viewModel.trips.collectAsStateWithLifecycle()
 
     TripsContent(
-        trips = viewModel.trips,
+        trips = trips,
         selectedStatus = selectedStatus,
         onStatusSelected = viewModel::onStatusSelected,
         onViewReceipt = onViewReceipt,

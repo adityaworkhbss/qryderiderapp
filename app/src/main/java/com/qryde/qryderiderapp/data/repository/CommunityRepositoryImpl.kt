@@ -3,6 +3,7 @@ package com.qryde.qryderiderapp.data.repository
 import com.qryde.qryderiderapp.core.common.AppResult
 import com.qryde.qryderiderapp.core.logging.AppLogger
 import com.qryde.qryderiderapp.data.datastore.CommunityDataStore
+import com.qryde.qryderiderapp.data.datastore.PreferredCommunityDataStore
 import com.qryde.qryderiderapp.data.datastore.ServerConfigDataStore
 import com.qryde.qryderiderapp.data.mapper.toCommunities
 import com.qryde.qryderiderapp.data.remote.rest.QtipCommandClient
@@ -25,6 +26,7 @@ class CommunityRepositoryImpl @Inject constructor(
     private val qtipCommandClient: QtipCommandClient,
     private val serverConfigDataStore: ServerConfigDataStore,
     private val communityDataStore: CommunityDataStore,
+    private val preferredCommunityDataStore: PreferredCommunityDataStore,
     private val json: Json
 ) : CommunityRepository {
 
@@ -44,6 +46,7 @@ class CommunityRepositoryImpl @Inject constructor(
             )
             val communities = rawResponse.toCommunities(json)
             communityDataStore.save(communities)
+            resolvePreferredCommunity(communities)
             AppLogger.i(TAG, "Resolved ${communities.size} joined communities")
             AppResult.Success(communities)
         } catch (e: CancellationException) {
@@ -52,6 +55,21 @@ class CommunityRepositoryImpl @Inject constructor(
             AppLogger.e(TAG, "Failed to fetch joined communities", e)
             AppResult.Error("Could not fetch community data")
         }
+    }
+
+    /**
+     * Mirrors the legacy client's processCommunityData(): a community the
+     * backend already flags pref_comm="Y", or the sole joined community, is
+     * the rider's preferred one - no need to make them pick it again via the
+     * 20SC flow. Doesn't override an id the rider already chose explicitly.
+     */
+    private suspend fun resolvePreferredCommunity(communities: List<Community>) {
+        if (!preferredCommunityDataStore.current.first().isNullOrBlank()) return
+
+        val resolvedId = communities.firstOrNull { it.isPreferred }?.id
+            ?: communities.singleOrNull()?.id
+            ?: return
+        preferredCommunityDataStore.save(resolvedId)
     }
 
     private companion object {
