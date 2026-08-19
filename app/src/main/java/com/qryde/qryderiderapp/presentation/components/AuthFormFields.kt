@@ -36,6 +36,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -91,6 +93,8 @@ fun QrydeTextField(
     modifier: Modifier = Modifier,
     required: Boolean = false,
     leadingIcon: ImageVector? = null,
+    trailingIcon: (@Composable () -> Unit)? = null,
+    focusRequester: FocusRequester? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
     isError: Boolean = false,
     supportingText: String? = null,
@@ -109,6 +113,7 @@ fun QrydeTextField(
             onValueChange = onValueChange,
             placeholder = { Text(placeholder, color = QrydeHint) },
             leadingIcon = leadingIcon?.let { icon -> { Icon(icon, contentDescription = null) } },
+            trailingIcon = trailingIcon,
             singleLine = true,
             isError = isError,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
@@ -116,6 +121,7 @@ fun QrydeTextField(
             colors = fieldColors,
             modifier = Modifier
                 .fillMaxWidth()
+                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                 .onFocusChanged { state ->
                     if (wasFocused && !state.isFocused) onFocusLost?.invoke()
                     wasFocused = state.isFocused

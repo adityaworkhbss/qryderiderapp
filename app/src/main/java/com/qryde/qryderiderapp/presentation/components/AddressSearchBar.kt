@@ -7,16 +7,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,12 +28,6 @@ import androidx.compose.ui.unit.dp
 private val AddressSuggestionIconColor = Color(0xFF9AA0A6)
 private val AddressSuggestionSubtitleColor = Color(0xFF6B6B6B)
 
-/**
- * The same search field used on the Home screen's destination search - a
- * single shared composable so every address-search entry point (Home,
- * "Set Location on Map") looks and behaves identically instead of each
- * screen growing its own lookalike copy.
- */
 @Composable
 fun AddressSearchField(
     value: String,
@@ -37,23 +35,32 @@ fun AddressSearchField(
     modifier: Modifier = Modifier,
     onFocusChanged: ((Boolean) -> Unit)? = null
 ) {
+    // Mirrors ivClearPickup/ivClearDestination from the legacy screen: clearing
+    // the query also hands focus back to the field, matching requestFocus().
+    val focusRequester = remember { FocusRequester() }
+
     QrydeTextField(
         value = value,
         onValueChange = onValueChange,
         label = "",
         placeholder = "Search your destination",
         leadingIcon = Icons.Filled.Search,
+        trailingIcon = if (value.isNotEmpty()) {
+            {
+                IconButton(onClick = {
+                    onValueChange("")
+                    focusRequester.requestFocus()
+                }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Clear search")
+                }
+            }
+        } else null,
+        focusRequester = focusRequester,
         onFocusChanged = onFocusChanged,
         modifier = modifier
     )
 }
 
-/**
- * The same suggestions dropdown used under the Home screen's search field.
- * Generic over [T] so both Home's RecentAddress and the map picker's
- * AddressSuggestion (a different domain type - it carries lat/lng, which
- * RecentAddress doesn't need) can share one visual implementation.
- */
 @Composable
 fun <T> AddressSuggestionsCard(
     items: List<T>,
