@@ -30,19 +30,19 @@ fun CurrentLocationPinOverlay(
             imageVector = Icons.Filled.LocationOn,
             contentDescription = "Pinned location",
             tint = QrydePrimary,
-            modifier = Modifier.size(80.dp)
+            modifier = Modifier.size(40.dp)
         )
-        if (label != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = label,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(QrydePrimary)
-                    .padding(horizontal = 20.dp, vertical = 12.dp)
-            )
-        }
+//        if (label != null) {
+//            Spacer(modifier = Modifier.height(8.dp))
+//            Text(
+//                text = label,
+//                color = Color.White,
+//                fontWeight = FontWeight.Bold,
+//                modifier = Modifier
+//                    .clip(RoundedCornerShape(20.dp))
+//                    .background(QrydePrimary)
+//                    .padding(horizontal = 20.dp, vertical = 12.dp)
+//            )
+//        }
     }
 }
