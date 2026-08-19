@@ -55,7 +55,14 @@ data class BookRideUiState(
     val showPaymentMethodSheet: Boolean = false,
     val showSetLocationSheet: Boolean = false,
     val mapPickerLatitude: Double = DefaultMapLatitude,
-    val mapPickerLongitude: Double = DefaultMapLongitude
+    val mapPickerLongitude: Double = DefaultMapLongitude,
+    /** Which address row on the "Set Up Your Ride" screen a search pick or a
+     * recent-address tap applies to - defaults to the destination, since
+     * that's what was just chosen on the way into this step. */
+    val activeAddressField: AddressField = AddressField.DROPOFF,
+    /** Whether [activeAddressField]'s row is currently showing an inline
+     * search field instead of its static address text. */
+    val isEditingAddressField: Boolean = false
 ) {
     val canProceedFromRideDetails: Boolean
         get() = if (isRecurring) {
@@ -63,6 +70,9 @@ data class BookRideUiState(
         } else {
             startDateLabel.isNotBlank() && timeLabel.isNotBlank()
         }
+
+    val canProceedFromAddressSetup: Boolean
+        get() = pickupAddress.isNotBlank() && dropoffAddress.isNotBlank()
 }
 
 @HiltViewModel
@@ -86,10 +96,17 @@ class BookRideViewModel @Inject constructor(
     private val _mapSearchSuggestions = MutableStateFlow<List<AddressSuggestion>>(emptyList())
     val mapSearchSuggestions: StateFlow<List<AddressSuggestion>> = _mapSearchSuggestions.asStateFlow()
 
+    private val _addressSetupQuery = MutableStateFlow("")
+    val addressSetupQuery: StateFlow<String> = _addressSetupQuery.asStateFlow()
+
+    private val _addressSetupSuggestions = MutableStateFlow<List<AddressSuggestion>>(emptyList())
+    val addressSetupSuggestions: StateFlow<List<AddressSuggestion>> = _addressSetupSuggestions.asStateFlow()
+
     init {
         fetchSuggestedAddresses()
         observeSearchQueryForLiveAddressSearch()
         observeMapSearchQuery()
+        observeAddressSetupQuery()
     }
 
     /**
@@ -179,6 +196,77 @@ class BookRideViewModel @Inject constructor(
         }
         _mapSearchQuery.value = ""
         _mapSearchSuggestions.value = emptyList()
+    }
+
+    /** Same debounced backend type-ahead search as the map picker, but backing the
+     * inline edit field on the "Set Up Your Ride" screen's active address row. */
+    private fun observeAddressSetupQuery() {
+        viewModelScope.launch {
+            _addressSetupQuery
+                .debounce(SEARCH_DEBOUNCE_MILLIS)
+                .collectLatest { query -> updateAddressSetupSuggestions(query) }
+        }
+    }
+
+    private suspend fun updateAddressSetupSuggestions(query: String) {
+        val sanitizedQuery = query.replace(NON_ALPHANUMERIC_REGEX, "")
+        if (sanitizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+            _addressSetupSuggestions.value = emptyList()
+            return
+        }
+
+        when (val result = searchAddressesUseCase(sanitizedQuery)) {
+            is AppResult.Success -> _addressSetupSuggestions.value = result.data
+            is AppResult.Error -> {
+                AppLogger.d(TAG, "Address setup search unavailable: ${result.message}")
+                _addressSetupSuggestions.value = emptyList()
+            }
+        }
+    }
+
+    /** Taps a row into edit mode - it now shows a live search field instead of static text. */
+    fun onAddressFieldTapped(field: AddressField) {
+        _uiState.update { it.copy(activeAddressField = field, isEditingAddressField = true) }
+        clearAddressSetupSearch()
+    }
+
+    fun onAddressSetupQueryChanged(value: String) {
+        _addressSetupQuery.value = value
+    }
+
+    fun onAddressSetupSuggestionSelected(suggestion: AddressSuggestion) {
+        applyAddressSetupSelection(suggestion.fullAddress)
+    }
+
+    /** Selecting from the always-visible Recent Address list applies to whichever
+     * row was tapped most recently (activeAddressField), even if that row isn't
+     * currently in its inline-edit state. */
+    fun onRecentAddressSelectedForAddressSetup(address: String) {
+        applyAddressSetupSelection(address)
+    }
+
+    private fun applyAddressSetupSelection(address: String) {
+        _uiState.update {
+            when (it.activeAddressField) {
+                AddressField.PICKUP -> it.copy(pickupAddress = address, isEditingAddressField = false)
+                AddressField.DROPOFF -> it.copy(dropoffAddress = address, isEditingAddressField = false)
+            }
+        }
+        clearAddressSetupSearch()
+    }
+
+    private fun clearAddressSetupSearch() {
+        _addressSetupQuery.value = ""
+        _addressSetupSuggestions.value = emptyList()
+    }
+
+    fun onProceedFromAddressSetup() {
+        if (!_uiState.value.canProceedFromAddressSetup) return
+        _uiState.update { it.copy(step = BookingStep.RIDE_DETAILS) }
+    }
+
+    fun onBackFromAddressSetup() {
+        _uiState.update { it.copy(step = BookingStep.SEARCH) }
     }
 
     fun onLocateMeClicked() {
@@ -275,7 +363,15 @@ class BookRideViewModel @Inject constructor(
     }
 
     fun onDestinationSelected(address: String) {
-        _uiState.update { it.copy(dropoffAddress = address, step = BookingStep.RIDE_DETAILS) }
+        _uiState.update {
+            it.copy(
+                dropoffAddress = address,
+                step = BookingStep.ADDRESS_SETUP,
+                activeAddressField = AddressField.DROPOFF,
+                isEditingAddressField = false
+            )
+        }
+        clearAddressSetupSearch()
     }
 
     fun onTripTypeChanged(isRecurring: Boolean) {
@@ -371,7 +467,8 @@ class BookRideViewModel @Inject constructor(
             it.copy(
                 showSetLocationSheet = true,
                 mapPickerLatitude = DefaultMapLatitude,
-                mapPickerLongitude = DefaultMapLongitude
+                mapPickerLongitude = DefaultMapLongitude,
+                isEditingAddressField = false
             )
         }
     }
@@ -385,11 +482,15 @@ class BookRideViewModel @Inject constructor(
         clearMapSearch()
     }
 
+    /** The map picker only ever sets the destination - whether it was opened from the
+     * initial search screen or from "Set Up Your Ride", saving always lands back on
+     * "Set Up Your Ride" so the user still confirms pickup before Ride Details. */
     fun onLocationOnMapSaved() {
         _uiState.update {
             it.copy(
                 dropoffAddress = "Pinned location (${"%.4f".format(it.mapPickerLatitude)}, ${"%.4f".format(it.mapPickerLongitude)})",
-                step = BookingStep.RIDE_DETAILS,
+                step = BookingStep.ADDRESS_SETUP,
+                activeAddressField = AddressField.DROPOFF,
                 showSetLocationSheet = false
             )
         }
@@ -401,8 +502,10 @@ class BookRideViewModel @Inject constructor(
         _mapSearchSuggestions.value = emptyList()
     }
 
+    /** Ride Details' back arrow - returns to "Set Up Your Ride" (the step right
+     * before it now), not all the way back to the initial destination search. */
     fun onBackToSearch() {
-        _uiState.update { it.copy(step = BookingStep.SEARCH) }
+        _uiState.update { it.copy(step = BookingStep.ADDRESS_SETUP) }
     }
 
     fun onBackToRideDetails() {

@@ -12,15 +12,31 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.qryde.qryderiderapp.BuildConfig
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
+import org.osmdroid.tileprovider.tilesource.ITileSource
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 
 const val DefaultMapLatitude = 28.4595
 const val DefaultMapLongitude = 77.0266
+
+private val MapTilerTileSource: ITileSource? = BuildConfig.MAPTILER_API_KEY
+    .takeIf { it.isNotBlank() }
+    ?.let { apiKey ->
+        XYTileSource(
+            "MapTilerBasic",
+            0,
+            19,
+            256,
+            ".png?key=$apiKey",
+            arrayOf("https://api.maptiler.com/maps/basic-v2/")
+        )
+    }
 
 @Composable
 fun OsmMapView(
@@ -37,7 +53,7 @@ fun OsmMapView(
 
     val mapView = remember {
         MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
+            setTileSource(MapTilerTileSource ?: TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             controller.setZoom(zoomLevel)
             controller.setCenter(GeoPoint(centerLatitude, centerLongitude))

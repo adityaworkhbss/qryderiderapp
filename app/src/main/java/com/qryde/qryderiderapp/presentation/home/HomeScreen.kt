@@ -1,6 +1,8 @@
 package com.qryde.qryderiderapp.presentation.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -60,7 +63,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.qryde.qryderiderapp.core.designsystem.QrydeError
 import com.qryde.qryderiderapp.core.designsystem.QrydeFieldBackground
+import com.qryde.qryderiderapp.core.designsystem.QrydeFieldBorder
 import com.qryde.qryderiderapp.core.designsystem.QrydePrimary
 import com.qryde.qryderiderapp.domain.model.AddressSuggestion
 import com.qryde.qryderiderapp.presentation.components.AddressSearchField
@@ -79,14 +84,24 @@ fun HomeScreen(
     val addressSuggestions by viewModel.addressSuggestions.collectAsStateWithLifecycle()
     val mapSearchQuery by viewModel.mapSearchQuery.collectAsStateWithLifecycle()
     val mapSearchSuggestions by viewModel.mapSearchSuggestions.collectAsStateWithLifecycle()
+    val addressSetupQuery by viewModel.addressSetupQuery.collectAsStateWithLifecycle()
+    val addressSetupSuggestions by viewModel.addressSetupSuggestions.collectAsStateWithLifecycle()
 
     HomeContent(
         uiState = uiState,
         addressSuggestions = addressSuggestions,
         mapSearchQuery = mapSearchQuery,
         mapSearchSuggestions = mapSearchSuggestions,
+        addressSetupQuery = addressSetupQuery,
+        addressSetupSuggestions = addressSetupSuggestions,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onDestinationSelected = viewModel::onDestinationSelected,
+        onAddressFieldTapped = viewModel::onAddressFieldTapped,
+        onAddressSetupQueryChanged = viewModel::onAddressSetupQueryChanged,
+        onAddressSetupSuggestionSelected = viewModel::onAddressSetupSuggestionSelected,
+        onRecentAddressSelectedForAddressSetup = viewModel::onRecentAddressSelectedForAddressSetup,
+        onProceedFromAddressSetup = viewModel::onProceedFromAddressSetup,
+        onBackFromAddressSetup = viewModel::onBackFromAddressSetup,
         onTripTypeChanged = viewModel::onTripTypeChanged,
         onDayToggled = viewModel::onDayToggled,
         onDatePickerRequested = viewModel::onDatePickerRequested,
@@ -124,8 +139,16 @@ private fun HomeContent(
     addressSuggestions: List<RecentAddress> = emptyList(),
     mapSearchQuery: String = "",
     mapSearchSuggestions: List<AddressSuggestion> = emptyList(),
+    addressSetupQuery: String = "",
+    addressSetupSuggestions: List<AddressSuggestion> = emptyList(),
     onSearchQueryChanged: (String) -> Unit,
     onDestinationSelected: (String) -> Unit,
+    onAddressFieldTapped: (AddressField) -> Unit = {},
+    onAddressSetupQueryChanged: (String) -> Unit = {},
+    onAddressSetupSuggestionSelected: (AddressSuggestion) -> Unit = {},
+    onRecentAddressSelectedForAddressSetup: (String) -> Unit = {},
+    onProceedFromAddressSetup: () -> Unit = {},
+    onBackFromAddressSetup: () -> Unit = {},
     onTripTypeChanged: (Boolean) -> Unit,
     onDayToggled: (Int) -> Unit,
     onDatePickerRequested: (DatePickerTarget) -> Unit,
@@ -171,6 +194,19 @@ private fun HomeContent(
                     onDestinationSelected = onDestinationSelected,
                     onSetLocationOnMapRequested = onSetLocationOnMapRequested,
                     onClearRecentAddresses = onClearRecentAddresses
+                )
+                BookingStep.ADDRESS_SETUP -> AddressSetupSheetContent(
+                    uiState = uiState,
+                    addressSetupQuery = addressSetupQuery,
+                    addressSetupSuggestions = addressSetupSuggestions,
+                    onBack = onBackFromAddressSetup,
+                    onAddressFieldTapped = onAddressFieldTapped,
+                    onAddressSetupQueryChanged = onAddressSetupQueryChanged,
+                    onAddressSetupSuggestionSelected = onAddressSetupSuggestionSelected,
+                    onRecentAddressSelected = onRecentAddressSelectedForAddressSetup,
+                    onSetLocationOnMapRequested = onSetLocationOnMapRequested,
+                    onClearRecentAddresses = onClearRecentAddresses,
+                    onProceed = onProceedFromAddressSetup
                 )
                 BookingStep.RIDE_DETAILS -> RideDetailsSheetContent(
                     uiState = uiState,
@@ -290,18 +326,7 @@ private fun SearchSheetContent(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable(onClick = onSetLocationOnMapRequested)
-            ) {
-                Icon(Icons.Filled.LocationOn, contentDescription = null, tint = QrydePrimary)
-                Text(
-                    "Set Location on map",
-                    color = QrydePrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
+            SetLocationOnMapLink(onClick = onSetLocationOnMapRequested)
 
             if (uiState.recentAddresses.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(20.dp))
@@ -354,6 +379,22 @@ private fun AddressSectionHeader(title: String, actionLabel: String? = null, onA
                 modifier = Modifier.clickable(onClick = onActionClick)
             )
         }
+    }
+}
+
+@Composable
+private fun SetLocationOnMapLink(onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Icon(Icons.Filled.LocationOn, contentDescription = null, tint = QrydePrimary)
+        Text(
+            "Set Location on map",
+            color = QrydePrimary,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 8.dp)
+        )
     }
 }
 
@@ -410,6 +451,156 @@ private fun QuickPlaceChip(
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
             Text(subtitle, style = MaterialTheme.typography.labelLarge, color = Color(0xFF6B6B6B), maxLines = 1)
+        }
+    }
+}
+
+/**
+ * "Set Up Your Ride" - shown right after a destination is chosen (either by
+ * typed search or "Set Location on map"), before Ride Details. Pickup and
+ * dropoff sit together so the user can confirm both, edit either one inline,
+ * or pick a Recent Address for whichever row they last tapped.
+ */
+@Composable
+private fun AddressSetupSheetContent(
+    uiState: BookRideUiState,
+    addressSetupQuery: String,
+    addressSetupSuggestions: List<AddressSuggestion>,
+    onBack: () -> Unit,
+    onAddressFieldTapped: (AddressField) -> Unit,
+    onAddressSetupQueryChanged: (String) -> Unit,
+    onAddressSetupSuggestionSelected: (AddressSuggestion) -> Unit,
+    onRecentAddressSelected: (String) -> Unit,
+    onSetLocationOnMapRequested: () -> Unit,
+    onClearRecentAddresses: () -> Unit,
+    onProceed: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack, modifier = Modifier.padding(end = 4.dp).size(32.dp)) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text("Set Up Your Ride", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .border(BorderStroke(1.dp, QrydeFieldBorder), RoundedCornerShape(16.dp))
+        ) {
+            AddressSetupRow(
+                icon = Icons.Filled.LocationOn,
+                iconTint = QrydePrimary,
+                label = uiState.pickupAddress.ifBlank { "Your Current Location" },
+                isEditing = uiState.isEditingAddressField && uiState.activeAddressField == AddressField.PICKUP,
+                query = addressSetupQuery,
+                suggestions = addressSetupSuggestions,
+                onTap = { onAddressFieldTapped(AddressField.PICKUP) },
+                onQueryChanged = onAddressSetupQueryChanged,
+                onSuggestionSelected = onAddressSetupSuggestionSelected
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            AddressSetupRow(
+                icon = Icons.Filled.LocationOn,
+                iconTint = QrydeError,
+                label = uiState.dropoffAddress.ifBlank { "Where to?" },
+                isEditing = uiState.isEditingAddressField && uiState.activeAddressField == AddressField.DROPOFF,
+                query = addressSetupQuery,
+                suggestions = addressSetupSuggestions,
+                onTap = { onAddressFieldTapped(AddressField.DROPOFF) },
+                onQueryChanged = onAddressSetupQueryChanged,
+                onSuggestionSelected = onAddressSetupSuggestionSelected
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        SetLocationOnMapLink(onClick = onSetLocationOnMapRequested)
+
+        if (uiState.recentAddresses.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(20.dp))
+            AddressSectionHeader(
+                title = "Recent Address",
+                actionLabel = "Clear All",
+                onActionClick = onClearRecentAddresses
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            uiState.recentAddresses.forEach { address ->
+                AddressSuggestionRow(
+                    title = address.title,
+                    subtitle = address.subtitle,
+                    onClick = { onRecentAddressSelected(address.destinationAddress) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+            onClick = onProceed,
+            enabled = uiState.canProceedFromAddressSetup,
+            shape = RoundedCornerShape(28.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = QrydePrimary),
+            modifier = Modifier.fillMaxWidth().height(52.dp)
+        ) {
+            Text("Next", fontWeight = FontWeight.SemiBold)
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+/** One address row on [AddressSetupSheetContent] - either static, tappable
+ * text, or (while [isEditing]) a live search field with its own suggestions
+ * dropdown right underneath. */
+@Composable
+private fun AddressSetupRow(
+    icon: ImageVector,
+    iconTint: Color,
+    label: String,
+    isEditing: Boolean,
+    query: String,
+    suggestions: List<AddressSuggestion>,
+    onTap: () -> Unit,
+    onQueryChanged: (String) -> Unit,
+    onSuggestionSelected: (AddressSuggestion) -> Unit
+) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        if (isEditing) {
+            AddressSearchField(
+                value = query,
+                onValueChange = onQueryChanged,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+            )
+            if (query.isNotBlank() && suggestions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                AddressSuggestionsCard(
+                    items = suggestions,
+                    title = { it.title },
+                    subtitle = { it.subtitle },
+                    onItemClick = onSuggestionSelected,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onTap)
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+            ) {
+                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(label, fontWeight = FontWeight.Medium)
+            }
         }
     }
 }

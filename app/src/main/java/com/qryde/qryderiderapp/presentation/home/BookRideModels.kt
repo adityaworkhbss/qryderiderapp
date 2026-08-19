@@ -2,8 +2,14 @@ package com.qryde.qryderiderapp.presentation.home
 
 enum class BookingStep {
     SEARCH,
+    ADDRESS_SETUP,
     RIDE_DETAILS,
     CHOOSE_SERVICE
+}
+
+enum class AddressField {
+    PICKUP,
+    DROPOFF
 }
 
 enum class DatePickerTarget {
