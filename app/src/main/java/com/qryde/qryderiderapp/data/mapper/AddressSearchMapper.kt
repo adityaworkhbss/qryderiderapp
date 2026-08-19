@@ -67,5 +67,4 @@ private fun TypeAheadAddressDto.toAddressSuggestion(): AddressSuggestion {
     )
 }
 
-/** Unlike the legacy client's reference-equality `!= "null"` check (always true), this actually drops blank/"null" fields. */
 private fun String.clean(): String? = trim().takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }

@@ -33,13 +33,10 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -65,6 +62,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.qryde.qryderiderapp.core.designsystem.QrydeFieldBackground
 import com.qryde.qryderiderapp.core.designsystem.QrydePrimary
+import com.qryde.qryderiderapp.domain.model.AddressSuggestion
+import com.qryde.qryderiderapp.presentation.components.AddressSearchField
+import com.qryde.qryderiderapp.presentation.components.AddressSuggestionRow
+import com.qryde.qryderiderapp.presentation.components.AddressSuggestionsCard
 import com.qryde.qryderiderapp.presentation.components.CurrentLocationPinOverlay
 import com.qryde.qryderiderapp.presentation.components.OsmMapView
 import com.qryde.qryderiderapp.presentation.components.QrydeTextField
@@ -76,10 +77,14 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val addressSuggestions by viewModel.addressSuggestions.collectAsStateWithLifecycle()
+    val mapSearchQuery by viewModel.mapSearchQuery.collectAsStateWithLifecycle()
+    val mapSearchSuggestions by viewModel.mapSearchSuggestions.collectAsStateWithLifecycle()
 
     HomeContent(
         uiState = uiState,
         addressSuggestions = addressSuggestions,
+        mapSearchQuery = mapSearchQuery,
+        mapSearchSuggestions = mapSearchSuggestions,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onDestinationSelected = viewModel::onDestinationSelected,
         onTripTypeChanged = viewModel::onTripTypeChanged,
@@ -104,7 +109,11 @@ fun HomeScreen(
         onSetLocationOnMapRequested = viewModel::onSetLocationOnMapRequested,
         onMapPickerCenterChanged = viewModel::onMapPickerCenterChanged,
         onSetLocationSheetDismissed = viewModel::onSetLocationSheetDismissed,
-        onLocationOnMapSaved = viewModel::onLocationOnMapSaved
+        onLocationOnMapSaved = viewModel::onLocationOnMapSaved,
+        onClearRecentAddresses = viewModel::onClearRecentAddresses,
+        onMapSearchQueryChanged = viewModel::onMapSearchQueryChanged,
+        onMapSearchSuggestionSelected = viewModel::onMapSearchSuggestionSelected,
+        onLocateMeClicked = viewModel::onLocateMeClicked
     )
 }
 
@@ -113,6 +122,8 @@ fun HomeScreen(
 private fun HomeContent(
     uiState: BookRideUiState,
     addressSuggestions: List<RecentAddress> = emptyList(),
+    mapSearchQuery: String = "",
+    mapSearchSuggestions: List<AddressSuggestion> = emptyList(),
     onSearchQueryChanged: (String) -> Unit,
     onDestinationSelected: (String) -> Unit,
     onTripTypeChanged: (Boolean) -> Unit,
@@ -137,7 +148,11 @@ private fun HomeContent(
     onSetLocationOnMapRequested: () -> Unit,
     onMapPickerCenterChanged: (Double, Double) -> Unit,
     onSetLocationSheetDismissed: () -> Unit,
-    onLocationOnMapSaved: () -> Unit
+    onLocationOnMapSaved: () -> Unit,
+    onClearRecentAddresses: () -> Unit = {},
+    onMapSearchQueryChanged: (String) -> Unit = {},
+    onMapSearchSuggestionSelected: (AddressSuggestion) -> Unit = {},
+    onLocateMeClicked: () -> Unit = {}
 ) {
     val scaffoldState = rememberBottomSheetScaffoldState()
 
@@ -154,7 +169,8 @@ private fun HomeContent(
                     addressSuggestions = addressSuggestions,
                     onSearchQueryChanged = onSearchQueryChanged,
                     onDestinationSelected = onDestinationSelected,
-                    onSetLocationOnMapRequested = onSetLocationOnMapRequested
+                    onSetLocationOnMapRequested = onSetLocationOnMapRequested,
+                    onClearRecentAddresses = onClearRecentAddresses
                 )
                 BookingStep.RIDE_DETAILS -> RideDetailsSheetContent(
                     uiState = uiState,
@@ -197,6 +213,11 @@ private fun HomeContent(
         SetLocationOnMapSheet(
             latitude = uiState.mapPickerLatitude,
             longitude = uiState.mapPickerLongitude,
+            searchQuery = mapSearchQuery,
+            searchSuggestions = mapSearchSuggestions,
+            onSearchQueryChanged = onMapSearchQueryChanged,
+            onSuggestionSelected = onMapSearchSuggestionSelected,
+            onLocateMeClicked = onLocateMeClicked,
             onCenterChanged = onMapPickerCenterChanged,
             onDismiss = onSetLocationSheetDismissed,
             onSave = onLocationOnMapSaved
@@ -210,13 +231,11 @@ private fun SearchSheetContent(
     addressSuggestions: List<RecentAddress>,
     onSearchQueryChanged: (String) -> Unit,
     onDestinationSelected: (String) -> Unit,
-    onSetLocationOnMapRequested: () -> Unit
+    onSetLocationOnMapRequested: () -> Unit,
+    onClearRecentAddresses: () -> Unit
 ) {
     var isSearchFocused by remember { mutableStateOf(false) }
-    // Live backend type-ahead search (see BookRideViewModel) wins once it has
-    // results; otherwise fall back to filtering the already-fetched recent
-    // addresses locally - covers both "not typing yet" and "RL search isn't
-    // configured for this community" (see AddressSearchRepository).
+
     val suggestions = remember(uiState.searchQuery, uiState.recentAddresses, addressSuggestions) {
         when {
             uiState.searchQuery.isBlank() -> uiState.recentAddresses
@@ -228,22 +247,30 @@ private fun SearchSheetContent(
         }
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
         Text("Where you want to go?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(12.dp))
 
-        QrydeTextField(
+        AddressSearchField(
             value = uiState.searchQuery,
             onValueChange = onSearchQueryChanged,
-            label = "",
-            placeholder = "Search your destination",
-            leadingIcon = Icons.Filled.Search,
             onFocusChanged = { isSearchFocused = it }
         )
 
         if (isSearchFocused) {
             Spacer(modifier = Modifier.height(8.dp))
-            RecentAddressSuggestionsCard(suggestions = suggestions, onDestinationSelected = onDestinationSelected)
+            AddressSuggestionsCard(
+                items = suggestions,
+                title = { it.title },
+                subtitle = { it.subtitle },
+                onItemClick = { onDestinationSelected(it.destinationAddress) },
+                emptyMessage = "No matching addresses"
+            )
         } else {
             if (uiState.quickPlaces.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -276,34 +303,56 @@ private fun SearchSheetContent(
                 )
             }
 
+            if (uiState.recentAddresses.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(20.dp))
+                AddressSectionHeader(
+                    title = "Recent Address",
+                    actionLabel = "Clear All",
+                    onActionClick = onClearRecentAddresses
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                uiState.recentAddresses.forEach { address ->
+                    AddressSuggestionRow(
+                        title = address.title,
+                        subtitle = address.subtitle,
+                        onClick = { onDestinationSelected(address.destinationAddress) }
+                    )
+                }
+            }
+
+            if (uiState.savedAddresses.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(20.dp))
+                AddressSectionHeader(title = "Saved Address")
+                Spacer(modifier = Modifier.height(4.dp))
+                uiState.savedAddresses.forEach { address ->
+                    AddressSuggestionRow(
+                        title = address.title,
+                        subtitle = address.subtitle,
+                        onClick = { onDestinationSelected(address.destinationAddress) }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
 
 @Composable
-private fun RecentAddressSuggestionsCard(
-    suggestions: List<RecentAddress>,
-    onDestinationSelected: (String) -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        modifier = Modifier.fillMaxWidth()
+private fun AddressSectionHeader(title: String, actionLabel: String? = null, onActionClick: (() -> Unit)? = null) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-            if (suggestions.isEmpty()) {
-                Text(
-                    "No matching addresses",
-                    color = Color(0xFF9AA0A6),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
-                )
-            } else {
-                suggestions.forEach { address ->
-                    RecentAddressRow(address = address, onClick = { onDestinationSelected(address.destinationAddress) })
-                }
-            }
+        Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+        if (actionLabel != null && onActionClick != null) {
+            Text(
+                actionLabel,
+                color = QrydePrimary,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.clickable(onClick = onActionClick)
+            )
         }
     }
 }
@@ -311,19 +360,28 @@ private fun RecentAddressSuggestionsCard(
 @Preview(showBackground = true)
 @Composable
 private fun RecentAddressSuggestionsCardPreview() {
-    RecentAddressSuggestionsCard(
-        suggestions = listOf(
+    AddressSuggestionsCard(
+        items = listOf(
             RecentAddress(id = "1", title = "456 Elm St", subtitle = "Brooklyn, NY, 11201, US"),
             RecentAddress(id = "2", title = "789 Broadway", subtitle = "Manhattan, NY, 10003, US")
         ),
-        onDestinationSelected = {}
+        title = { it.title },
+        subtitle = { it.subtitle },
+        onItemClick = {},
+        emptyMessage = "No matching addresses"
     )
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun RecentAddressSuggestionsCardEmptyPreview() {
-    RecentAddressSuggestionsCard(suggestions = emptyList(), onDestinationSelected = {})
+    AddressSuggestionsCard<RecentAddress>(
+        items = emptyList(),
+        title = { it.title },
+        subtitle = { it.subtitle },
+        onItemClick = {},
+        emptyMessage = "No matching addresses"
+    )
 }
 
 private fun QuickPlaceIcon.toImageVector(): ImageVector = when (this) {
@@ -352,23 +410,6 @@ private fun QuickPlaceChip(
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
             Text(subtitle, style = MaterialTheme.typography.labelLarge, color = Color(0xFF6B6B6B), maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun RecentAddressRow(address: RecentAddress, onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.Top,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-    ) {
-        Icon(Icons.Filled.LocationOn, contentDescription = null, tint = Color(0xFF9AA0A6))
-        Column(modifier = Modifier.padding(start = 10.dp)) {
-            Text(address.title, fontWeight = FontWeight.Medium)
-            Text(address.subtitle, style = MaterialTheme.typography.labelLarge, color = Color(0xFF6B6B6B))
         }
     }
 }
@@ -799,6 +840,14 @@ private fun HomeContentSearchWithDataPreview() {
                     subtitle = "Gurugram, HR",
                     destinationAddress = "Sector 18, Gurugram, HR",
                     icon = QuickPlaceIcon.OFFICE
+                )
+            ),
+            savedAddresses = listOf(
+                RecentAddress(
+                    id = "saved-1",
+                    title = "Doctor visit",
+                    subtitle = "Sector 29, Gurugram, HR",
+                    destinationAddress = "Max Hospital, Sector 29, Gurugram, HR"
                 )
             )
         ),

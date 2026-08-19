@@ -28,7 +28,8 @@ fun OsmMapView(
     centerLatitude: Double = DefaultMapLatitude,
     centerLongitude: Double = DefaultMapLongitude,
     zoomLevel: Double = 16.0,
-    onCenterChanged: ((latitude: Double, longitude: Double) -> Unit)? = null
+    onCenterChanged: ((latitude: Double, longitude: Double) -> Unit)? = null,
+    onMapReady: ((MapView) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -41,6 +42,10 @@ fun OsmMapView(
             controller.setZoom(zoomLevel)
             controller.setCenter(GeoPoint(centerLatitude, centerLongitude))
         }
+    }
+
+    LaunchedEffect(mapView) {
+        onMapReady?.invoke(mapView)
     }
 
     DisposableEffect(mapView) {

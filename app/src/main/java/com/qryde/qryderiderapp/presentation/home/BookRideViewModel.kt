@@ -3,6 +3,7 @@ package com.qryde.qryderiderapp.presentation.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qryde.qryderiderapp.core.common.AppResult
+import com.qryde.qryderiderapp.core.location.DeviceLocationResolver
 import com.qryde.qryderiderapp.core.logging.AppLogger
 import com.qryde.qryderiderapp.domain.model.AddressSuggestion
 import com.qryde.qryderiderapp.domain.model.SavedTripAddress
@@ -33,6 +34,7 @@ data class BookRideUiState(
     val recentAddresses: List<RecentAddress> = emptyList(),
     val savedTripAddresses: List<SavedTripAddress> = emptyList(),
     val quickPlaces: List<QuickPlace> = emptyList(),
+    val savedAddresses: List<RecentAddress> = emptyList(),
     val isRecurring: Boolean = false,
     val selectedDays: Set<Int> = emptySet(),
     val startDateLabel: String = "",
@@ -66,7 +68,8 @@ data class BookRideUiState(
 @HiltViewModel
 class BookRideViewModel @Inject constructor(
     private val fetchSuggestedAddressesUseCase: FetchSuggestedAddressesUseCase,
-    private val searchAddressesUseCase: SearchAddressesUseCase
+    private val searchAddressesUseCase: SearchAddressesUseCase,
+    private val deviceLocationResolver: DeviceLocationResolver
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BookRideUiState())
@@ -77,9 +80,16 @@ class BookRideViewModel @Inject constructor(
 
     private val addressSearchCache = mutableMapOf<String, List<RecentAddress>>()
 
+    private val _mapSearchQuery = MutableStateFlow("")
+    val mapSearchQuery: StateFlow<String> = _mapSearchQuery.asStateFlow()
+
+    private val _mapSearchSuggestions = MutableStateFlow<List<AddressSuggestion>>(emptyList())
+    val mapSearchSuggestions: StateFlow<List<AddressSuggestion>> = _mapSearchSuggestions.asStateFlow()
+
     init {
         fetchSuggestedAddresses()
         observeSearchQueryForLiveAddressSearch()
+        observeMapSearchQuery()
     }
 
     /**
@@ -130,6 +140,58 @@ class BookRideViewModel @Inject constructor(
         destinationAddress = fullAddress
     )
 
+    /** Same backend type-ahead search as the Home search sheet, but for the "Set Location on Map" picker - kept
+     * as AddressSuggestion (not RecentAddress) since picking a result needs its lat/lng to move the pin. */
+    private fun observeMapSearchQuery() {
+        viewModelScope.launch {
+            // No distinctUntilChanged() here - StateFlow already conflates by
+            // equality, and applying it directly to a StateFlow is a no-op
+            // (deprecated at error level in this coroutines version).
+            _mapSearchQuery
+                .debounce(SEARCH_DEBOUNCE_MILLIS)
+                .collectLatest { query -> updateMapSearchSuggestions(query) }
+        }
+    }
+
+    private suspend fun updateMapSearchSuggestions(query: String) {
+        val sanitizedQuery = query.replace(NON_ALPHANUMERIC_REGEX, "")
+        if (sanitizedQuery.length < MIN_SEARCH_QUERY_LENGTH) {
+            _mapSearchSuggestions.value = emptyList()
+            return
+        }
+
+        when (val result = searchAddressesUseCase(sanitizedQuery)) {
+            is AppResult.Success -> _mapSearchSuggestions.value = result.data
+            is AppResult.Error -> {
+                AppLogger.d(TAG, "Map search unavailable: ${result.message}")
+                _mapSearchSuggestions.value = emptyList()
+            }
+        }
+    }
+
+    fun onMapSearchQueryChanged(value: String) {
+        _mapSearchQuery.value = value
+    }
+
+    fun onMapSearchSuggestionSelected(suggestion: AddressSuggestion) {
+        if (suggestion.latitude != null && suggestion.longitude != null) {
+            onMapPickerCenterChanged(suggestion.latitude, suggestion.longitude)
+        }
+        _mapSearchQuery.value = ""
+        _mapSearchSuggestions.value = emptyList()
+    }
+
+    fun onLocateMeClicked() {
+        viewModelScope.launch {
+            val location = deviceLocationResolver.resolveCurrentLocation()
+            if (location != null) {
+                onMapPickerCenterChanged(location.latitude, location.longitude)
+            } else {
+                AppLogger.w(TAG, "Could not resolve current location for locate-me")
+            }
+        }
+    }
+
     private fun fetchSuggestedAddresses() {
         viewModelScope.launch {
             when (val result = fetchSuggestedAddressesUseCase()) {
@@ -146,17 +208,28 @@ class BookRideViewModel @Inject constructor(
                     val quickPlaces = result.data.savedTripAddresses
                         .mapNotNull { it.toQuickPlace() }
                         .distinctBy { it.label.lowercase() }
+                    val savedAddresses = result.data.savedTripAddresses.mapNotNull { it.toSavedAddress() }
                     _uiState.update {
                         it.copy(
                             recentAddresses = recentAddresses,
                             savedTripAddresses = result.data.savedTripAddresses,
-                            quickPlaces = quickPlaces
+                            quickPlaces = quickPlaces,
+                            savedAddresses = savedAddresses
                         )
                     }
                 }
                 is AppResult.Error -> AppLogger.w(TAG, "Failed to fetch suggested addresses: ${result.message}")
             }
         }
+    }
+
+    /** Dropoff-address fields as a display subtitle + full destination string, or null if the dropoff is blank. */
+    private fun SavedTripAddress.dropoffDisplay(): Pair<String, String>? {
+        val subtitle = listOf(dropoffCity, dropoffStateCode).filter { it.isNotBlank() }.joinToString(", ")
+        val destinationAddress = listOf(dropoffStreet, dropoffCity, dropoffStateCode, dropoffZip)
+            .filter { it.isNotBlank() }
+            .joinToString(", ")
+        return if (destinationAddress.isBlank()) null else subtitle to destinationAddress
     }
 
     /**
@@ -167,28 +240,38 @@ class BookRideViewModel @Inject constructor(
      */
     private fun SavedTripAddress.toQuickPlace(): QuickPlace? {
         if (purpose.isBlank()) return null
-        val label = purpose
-        val subtitle = listOf(dropoffCity, dropoffStateCode).filter { it.isNotBlank() }.joinToString(", ")
-        val destinationAddress = listOf(dropoffStreet, dropoffCity, dropoffStateCode, dropoffZip)
-            .filter { it.isNotBlank() }
-            .joinToString(", ")
-        if (destinationAddress.isBlank()) return null
+        val (subtitle, destinationAddress) = dropoffDisplay() ?: return null
         val icon = when {
-            label.equals("home", ignoreCase = true) -> QuickPlaceIcon.HOME
-            label.equals("work", ignoreCase = true) || label.equals("office", ignoreCase = true) -> QuickPlaceIcon.OFFICE
+            purpose.equals("home", ignoreCase = true) -> QuickPlaceIcon.HOME
+            purpose.equals("work", ignoreCase = true) || purpose.equals("office", ignoreCase = true) -> QuickPlaceIcon.OFFICE
             else -> QuickPlaceIcon.OTHER
         }
         return QuickPlace(
-            id = tripId.ifBlank { label },
-            label = label,
+            id = tripId.ifBlank { purpose },
+            label = purpose,
             subtitle = subtitle,
             destinationAddress = destinationAddress,
             icon = icon
         )
     }
 
+    /** The full "Saved Address" list shown on Home - every saved trip with a usable dropoff, not just the Home/Work ones. */
+    private fun SavedTripAddress.toSavedAddress(): RecentAddress? {
+        val (subtitle, destinationAddress) = dropoffDisplay() ?: return null
+        return RecentAddress(
+            id = tripId.ifBlank { destinationAddress },
+            title = purpose.ifBlank { "Saved Address" },
+            subtitle = subtitle,
+            destinationAddress = destinationAddress
+        )
+    }
+
     fun onSearchQueryChanged(value: String) {
         _uiState.update { it.copy(searchQuery = value) }
+    }
+
+    fun onClearRecentAddresses() {
+        _uiState.update { it.copy(recentAddresses = emptyList()) }
     }
 
     fun onDestinationSelected(address: String) {
@@ -299,6 +382,7 @@ class BookRideViewModel @Inject constructor(
 
     fun onSetLocationSheetDismissed() {
         _uiState.update { it.copy(showSetLocationSheet = false) }
+        clearMapSearch()
     }
 
     fun onLocationOnMapSaved() {
@@ -309,6 +393,12 @@ class BookRideViewModel @Inject constructor(
                 showSetLocationSheet = false
             )
         }
+        clearMapSearch()
+    }
+
+    private fun clearMapSearch() {
+        _mapSearchQuery.value = ""
+        _mapSearchSuggestions.value = emptyList()
     }
 
     fun onBackToSearch() {
